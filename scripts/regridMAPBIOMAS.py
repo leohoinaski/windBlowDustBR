@@ -80,18 +80,26 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
                 matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
     return matRegrid
 
-#wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
-wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
-GRDNAM = 'SC_2019'
-inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-outfolder = os.path.dirname(os.getcwd())+'/outputs'
-year = 2021
-idSoils = [30,25] #4.3. Mineração 4.4. Outras Áreas não Vegetadas
+def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):
+    # wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+    # #wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+    # GRDNAM = 'SC_2019'
+    # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+    # outfolder = os.path.dirname(os.getcwd())+'/outputs'
+    # year = 2021
+    # idSoils = [30,25] #4.3. Mineração 4.4. Outras Áreas não Vegetadas
+    
+    domainShp,lat,lon =  createDomainShp(wrfoutPath)
+    out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
+    x, y = rasterLatLon(outfolder,GRDNAM)
+    matRegrid = rasterInGrid(arr,x,y,lat,lon,idSoils)
+    return matRegrid, lat, lon
 
-domainShp,lat,lon =  createDomainShp(wrfoutPath)
-out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-x, y = rasterLatLon(outfolder,GRDNAM)
-matRegrid = rasterInGrid(arr,x,y,lat,lon,idSoils)
 
-import matplotlib.pyplot as plt 
-plt.pcolor(matRegrid[0,:,:])
+# import matplotlib.pyplot as plt 
+# rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
+# shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
+# borderShape = gpd.read_file(shape_path)
+# fig, ax = plt.subplots()
+# plt.pcolor(lon,lat,matRegrid[0,:,:])
+# borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
