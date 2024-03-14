@@ -17,7 +17,7 @@ import netCDF4 as nc
 import geopandas as gpd
 from shapely.geometry import Polygon
 import nctoolkit as nctools
-
+import rioxarray as riox
 
 def createDomainShp(wrfoutPath):
     ds = nc.Dataset(wrfoutPath)
@@ -29,7 +29,6 @@ def createDomainShp(wrfoutPath):
     domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
     return  domainShp,lat,lon
         
-
 def cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM):
     with rs.open(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif') as src:
         try:
@@ -48,21 +47,51 @@ def cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM):
             with rs.open(outfolder+'/'+GRDNAM+'.tif', "w", **out_meta) as dest:
                 dest.write(out_image)
             with rs.open(outfolder+'/'+GRDNAM+'.tif', 'r') as ds:
-                arr = ds.read()[0,:,:]  # read all raster values
-                no_data=ds.nodata
-                v = [arr[x,y] for x,y in np.ndindex(arr.shape)]
-                lonMapbio = [i[0] for i in data]
-                latMapbio = [i[1] for i in data]
-              
-    return out_meta,arr,lonMapbio,latMapbio
+                arr = ds.read()[0,:,:] 
+    return out_meta,arr
 
-wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+def rasterLatLon(outfolder,GRDNAM):
+    raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif')
+    x = raster.x.values
+    y = raster.y.values
+    return x, y
+
+def rasterInGrid(arr,x,y,lat,lon,idSoils):
+    lonsIdx = []
+    for i in x:
+        idx = (np.abs(i - lon[0,:])).argmin()
+        lonsIdx.append(idx)
+    latsIdx = []
+    for i in y:
+        idx = (np.abs(i - lat[:,0])).argmin()
+        latsIdx.append(idx)
+      
+    matRegrid=np.empty((len(idSoils),lat.shape[0],lat.shape[1]))
+    matRegrid[:,:,:] = np.nan
+    for kk, soilid in enumerate(idSoils):
+        matArr = arr.copy()
+        matArr[matArr!=soilid]=0
+        matArr[matArr==soilid]=1
+        for ii in range(0,lat.shape[0]):
+            for jj in range(lon.shape[1]):
+                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                #print(matArr[idr,idc].sum())
+                print(str(ii)+' '+str(jj))
+                matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
+    return matRegrid
+
+#wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
 GRDNAM = 'SC_2019'
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
 year = 2021
-idSoil = [23,30,25]
+idSoils = [30,25] #4.3. Mineração 4.4. Outras Áreas não Vegetadas
 
 domainShp,lat,lon =  createDomainShp(wrfoutPath)
-out_meta,arr,lonMapbio,latMapbio = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
+out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
+x, y = rasterLatLon(outfolder,GRDNAM)
+matRegrid = rasterInGrid(arr,x,y,lat,lon,idSoils)
 
+import matplotlib.pyplot as plt 
+plt.pcolor(matRegrid[0,:,:])
