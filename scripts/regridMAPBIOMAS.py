@@ -81,14 +81,15 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
                 matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
                 pixelsIn[ii,jj] = np.size(matArr[idr,idc])
     av = (pixelsIn-np.sum(matRegrid, axis=0))/pixelsIn
-    return matRegrid,pixelsIn,av
+    al = matRegrid/pixelsIn
+    return matRegrid,pixelsIn,av,al
 
 def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):  
     domainShp,lat,lon =  createDomainShp(wrfoutPath)
     out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
     x, y = rasterLatLon(outfolder,GRDNAM)
     matRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
-    return matRegrid,av,lat,lon
+    return matRegrid,av,al,lat,lon
 
 
 # wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
