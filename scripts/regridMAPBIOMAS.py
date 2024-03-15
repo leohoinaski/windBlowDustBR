@@ -80,30 +80,29 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
                 print(str(ii)+' '+str(jj))
                 matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
                 pixelsIn[ii,jj] = np.size(matArr[idr,idc])
-    av = (pixelsIn-np.sum(matRegrid[kk,ii,jj], axis=0))/pixelsIn
-    al= (np.sum(matRegrid[kk,ii,jj], axis=0))/pixelsIn
-    return av,al
+    av = (pixelsIn-np.sum(matRegrid, axis=0))/pixelsIn
+    return matRegrid,pixelsIn,av
 
 def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):  
     domainShp,lat,lon =  createDomainShp(wrfoutPath)
     out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
     x, y = rasterLatLon(outfolder,GRDNAM)
-    al,av = rasterInGrid(arr,x,y,lat,lon,idSoils)
-    return al,av,lat, lon
+    matRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
+    return matRegrid,av,lat,lon
 
 
-#wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
-wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
-GRDNAM = 'SC_2019'
-inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-outfolder = os.path.dirname(os.getcwd())+'/outputs'
-year = 2021
-idSoils = [23,24,30,25] #4.1. Praia, Duna e Areal  4.2. Área Urbanizada  4.3. Mineração 4.4. Outras Áreas não Vegetadas
-al,av,lat, lon = main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils)
-import matplotlib.pyplot as plt 
-rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
-borderShape = gpd.read_file(shape_path)
-fig, ax = plt.subplots()
-plt.pcolor(lon,lat,np.log(av))
-borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+# wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+# #wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+# GRDNAM = 'SC_2019'
+# inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+# outfolder = os.path.dirname(os.getcwd())+'/outputs'
+# year = 2021
+# idSoils = [23,24,30,25] #4.1. Praia, Duna e Areal  4.2. Área Urbanizada  4.3. Mineração 4.4. Outras Áreas não Vegetadas
+# matRegrid,av,lat, lon = main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils)
+# import matplotlib.pyplot as plt 
+# rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
+# shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
+# borderShape = gpd.read_file(shape_path)
+# fig, ax = plt.subplots()
+# plt.pcolor(lon,lat,av)
+# borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
