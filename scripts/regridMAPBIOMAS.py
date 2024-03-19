@@ -89,7 +89,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):
     out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
     x, y = rasterLatLon(outfolder,GRDNAM)
     matRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
-    return matRegrid,av,al,lat,lon
+    return matRegrid,av,al,lat,lon,domainShp
 
 
 # wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
