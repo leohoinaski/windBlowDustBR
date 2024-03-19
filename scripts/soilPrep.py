@@ -16,6 +16,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 import nctoolkit as nctools
 import rioxarray as riox
+from shapely.geometry import mapping
 
 def rasterLatLon(outfolder,GRDNAM):
     raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif')
@@ -25,7 +26,15 @@ def rasterLatLon(outfolder,GRDNAM):
 
 def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True).squeeze()
-    raster_new = raster.rio.reproject(CRS.from_string('EPSG:4326'))
+    #raster = raster.rio.reproject('EPSG:4326')
+    print('crop extent crs: ', domainShp.crs)
+    print('raster crs: ', raster.rio.crs)
+    domainShp5880  = domainShp.to_crs({'init': 'epsg:5880'})
+    print('crop extent crs: ', domainShp5880.crs)
+    
+    raster_clipped = raster.rio.clip(domainShp5880.geometry.apply(mapping),
+                                      # This is needed if your GDF is in a diff CRS than the raster data
+                                      domainShp5880.crs)
     
     with rs.open(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif') as src:
         try:
