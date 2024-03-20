@@ -25,20 +25,17 @@ def rasterLatLon(outfolder,GRDNAM):
     return x, y
 
 def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
-    raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True).squeeze()
-    #raster = raster.rio.reproject('EPSG:4326')
-    print('crop extent crs: ', domainShp.crs)
-    print('raster crs: ', raster.rio.crs)
-    domainShp5880  = domainShp.to_crs({'init': 'epsg:5880'})
-    print('crop extent crs: ', domainShp5880.crs)
-    
-    raster_clipped = raster.rio.clip(domainShp5880.geometry.apply(mapping),
-                                      # This is needed if your GDF is in a diff CRS than the raster data
-                                      domainShp5880.crs)
-    
+    # raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True).squeeze()
+    # raster = raster.rio.reproject('EPSG:4326')
+    #raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True)
+
     with rs.open(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif') as src:
+        print('crop extent crs: ', domainShp.crs)
+        print('raster crs: ', src.crs)
+        domainShp5880  = domainShp.to_crs({'init':  src.crs})
+        print('crop extent crs: ', domainShp5880.crs)
         try:
-            out_image, out_transform = rasterio.mask.mask(src,domainShp.geometry,
+            out_image, out_transform = rasterio.mask.mask(src,domainShp5880.geometry,
                                                           crop=True)
             out_meta = src.meta
             out_meta.update({"driver": "GTiff",
@@ -47,14 +44,37 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
                          "transform": out_transform})
         except:
             out_meta=None
-            arr=[]
+            raster=[]
         if out_meta:   
             with rs.open(outfolder+'/'+GRDNAM+'.tif', "w", **out_meta) as dest:
                 dest.write(out_image)
-            with rs.open(outfolder+'/'+GRDNAM+'.tif', 'r') as ds:
-                arr = ds.read()[0,:,:] 
-    return out_meta,arr
+            raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif', masked=True).squeeze()
+            raster = raster.rio.reproject('EPSG:4326')    
+            
+    return out_meta,raster
+
+def rasterInGrid(raster,x,y,lat,lon):
+    lonsIdx = []
+    for i in x:
+        idx = (np.abs(i - lon[0,:])).argmin()
+        lonsIdx.append(idx)
+    latsIdx = []
+    for i in y:
+        idx = (np.abs(i - lat[:,0])).argmin()
+        latsIdx.append(idx)
+    matRegrid=np.empty((lat.shape[0],lat.shape[1]))
+    matRegrid[:,:] = np.nan
+    matArr = raster.values.copy()
+    for ii in range(0,lat.shape[0]):
+        for jj in range(lon.shape[1]):
+            idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+            #print(matArr[idr,idc].sum())
+            print(str(ii)+' '+str(jj))
+            matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
+    return matRegrid
 
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
-out_meta,arr = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+GRDNAM = 'SC_2019'
+out_meta,raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+x, y = rasterLatLon(outfolder,GRDNAM)

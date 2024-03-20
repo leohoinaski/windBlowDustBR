@@ -17,6 +17,4 @@ outfolder = os.path.dirname(os.getcwd())+'/outputs'
 year = 2021
 idSoils = [23,24,30,25] #4.1. Praia, Duna e Areal  4.2. Área Urbanizada  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 
-
-
 matRegrid,av,al,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils)
