@@ -66,19 +66,17 @@ def ustarThreshold(D,clay,w,alphaV,alphaS,av):
     betaS = 90
     fr = ((1-sigmaV*mV*alphaV)*(1-betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
     ustarT = ustarTd*fm*fr
-    return ustarT
+    return ustarT,ustarTd
 
-def main(metPath,tablePath,av,al,D,clay,w):
-    tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
+
+
+def main(wrfoutPath,tablePath,av,al,D,clay):
+    #tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
     z0,alphaV,alphaS = roughness(tablePath,av,al)
-    ustarT = ustarThreshold(D,clay,w,alphaV,alphaS,av)
-    metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
-    ds = nc.Dataset(metPath)
+    #metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+    ds = nc.Dataset(wrfoutPath)
     uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,:,:,:])
-    #u = ds['U'][:,0,:,:]
-    # v = ds['V'][:,0,:,:]
-    # uz = np.sqrt(u**2+v**2)
     ustar = ustarCalc(uz,z0)
     w = ds['SMOIS'][:,0,:,:]
     ustarT = ustarThreshold(D,clay,w,alphaV,alphaS,av)
-    return ustar, ustarT
+    return ustar,ustarT,ustarTd

@@ -8,18 +8,19 @@ Created on Tue Mar 19 12:58:58 2024
 
 import rasterio as rs
 import rasterio.mask
-import pandas as pd
+#import pandas as pd
 import numpy as np
 import os
 import netCDF4 as nc
-import geopandas as gpd
-from shapely.geometry import Polygon
-import nctoolkit as nctools
+#import geopandas as gpd
+#from shapely.geometry import Polygon
+#import nctoolkit as nctools
 import rioxarray as riox
-from shapely.geometry import mapping
+#from shapely.geometry import mapping
+import regridMAPBIOMAS as regMap
 
 def rasterLatLon(outfolder,GRDNAM):
-    raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif')
+    raster = riox.open_rasterio(outfolder+'/clay_'+GRDNAM+'.tif')
     x = raster.x.values
     y = raster.y.values
     return x, y
@@ -46,7 +47,7 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
             out_meta=None
             raster=[]
         if out_meta:   
-            with rs.open(outfolder+'/'+GRDNAM+'.tif', "w", **out_meta) as dest:
+            with rs.open(outfolder+'/clay_'+GRDNAM+'.tif', "w", **out_meta) as dest:
                 dest.write(out_image)
             raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif', masked=True).squeeze()
             raster = raster.rio.reproject('EPSG:4326')    
@@ -73,8 +74,17 @@ def rasterInGrid(raster,x,y,lat,lon):
             matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
     return matRegrid
 
-inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-outfolder = os.path.dirname(os.getcwd())+'/outputs'
-GRDNAM = 'SC_2019'
-out_meta,raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
-x, y = rasterLatLon(outfolder,GRDNAM)
+def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon):
+    if os.path.exists(outfolder+'/regridClay_'+GRDNAM+'.nc'):
+        print ('You already have the regridClay_'+GRDNAM+'.nc file')
+        ds = nc.Dataset(outfolder+'/regridClay_'+GRDNAM+'.nc')
+        clayRegrid = ds['MAT'][:]
+    else:
+        inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+        outfolder = os.path.dirname(os.getcwd())+'/outputs'
+        GRDNAM = 'SC_2019'
+        out_meta,raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+        x, y = rasterLatLon(outfolder,GRDNAM)
+        clayRegrid = rasterInGrid(raster,x,y,lat,lon)
+        regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
+    return clayRegrid

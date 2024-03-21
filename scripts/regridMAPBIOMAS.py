@@ -12,7 +12,7 @@ import rasterio as rs
 import rasterio.mask
 #import pandas as pd
 import numpy as np
-#import os
+import os
 import netCDF4 as nc
 import geopandas as gpd
 from shapely.geometry import Polygon
@@ -44,14 +44,14 @@ def cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM):
             out_meta=None
             arr=[]
         if out_meta:   
-            with rs.open(outfolder+'/'+GRDNAM+'.tif', "w", **out_meta) as dest:
+            with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', "w", **out_meta) as dest:
                 dest.write(out_image)
-            with rs.open(outfolder+'/'+GRDNAM+'.tif', 'r') as ds:
+            with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', 'r') as ds:
                 arr = ds.read()[0,:,:] 
     return out_meta,arr
 
 def rasterLatLon(outfolder,GRDNAM):
-    raster = riox.open_rasterio(outfolder+'/'+GRDNAM+'.tif')
+    raster = riox.open_rasterio(outfolder+'/mapbiomas_'+GRDNAM+'.tif')
     x = raster.x.values
     y = raster.y.values
     return x, y
@@ -84,12 +84,50 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
     al = matRegrid/pixelsIn
     return matRegrid,pixelsIn,av,al
 
-def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):  
-    domainShp,lat,lon =  createDomainShp(wrfoutPath)
-    out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-    x, y = rasterLatLon(outfolder,GRDNAM)
-    matRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
-    return matRegrid,av,al,lat,lon,domainShp
+def createNETCDF(outfolder,name,data,xlon,ylat):
+    print('===================STARTING createNETCDF.py=======================')
+          
+    f2 = nc.Dataset(outfolder+'/'+name+'.nc','w') #'w' stands for write 
+    # # Specifying dimensions
+    #tempgrp = f.createGroup('vehicularEmissions_data')
+    f2.createDimension('VAR', data.shape[0])
+    f2.createDimension('ROW', data.shape[1])
+    f2.createDimension('COL', data.shape[2])
+    # Building variables
+    # Passing data into variables
+    LON = f2.createVariable('LON', 'f4', ( 'VAR','ROW','COL'))
+    LAT = f2.createVariable('LAT', 'f4', ( 'VAR','ROW','COL'))
+    LAT[:,:] =  ylat
+    LON[:,:] = xlon
+    LON.units = 'degrees '
+    LAT.units = 'degrees '
+    MAT = f2.createVariable('MAT', np.float32, ('VAR','ROW','COL'))
+    for ii in range(0,data.shape[0]):
+        MAT[ii,:,:] = data[ii,:,:]
+    f2.close()
+    return f2
+    
+def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils): 
+    if os.path.exists(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc'):
+        print ('You already have the regridMAPBIOMAS_'+GRDNAM+'.nc file')
+        domainShp,lat,lon =  createDomainShp(wrfoutPath)
+        ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc')
+        mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
+        al= ds['MAT'][len(idSoils),:,:] 
+        av= ds['MAT'][len(idSoils)+1,:,:] 
+    else:
+        domainShp,lat,lon =  createDomainShp(wrfoutPath)
+        out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
+        x, y = rasterLatLon(outfolder,GRDNAM)
+        mapbioRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
+        matRegrid2=np.empty((len(idSoils)+1,lat.shape[0],lat.shape[1]))
+        matRegrid2[:,:,:] = np.nan
+        matRegrid2[0:len(idSoils),:,:] = al
+        matRegrid2[len(idSoils),:,:] = av
+        #name = 'regridMAPBIOMAS_'+GRDNAM
+        #data = matRegrid2
+        createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)
+    return mapbioRegrid,av,al,lat,lon,domainShp
 
 
 # wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
