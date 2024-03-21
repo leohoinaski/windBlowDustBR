@@ -90,3 +90,4 @@ ustar[2,1,:,:][al[2,:,:]==0] = np.nan
 av[:,:][al[2,:,:]==0] = np.nan
 sRef[:,:][al[2,:,:]==0] = np.nan
 al[:,:,:][al[:,:,:]==0] = np.nan
+Fvtot[2,1,:,:][al[2,:,:]==0] = np.nan
