@@ -7,7 +7,7 @@ Created on Fri Mar 15 15:20:44 2024
 """
 import numpy as np
 
-def wbdFlux(av,al,SrefD,ustar,ustarT,ustarTd):
+def wbdFlux(av,al,sRef,ustar,ustarT,ustarTd):
     """
     Parameters
     ----------
@@ -15,7 +15,7 @@ def wbdFlux(av,al,SrefD,ustar,ustarT,ustarTd):
         porcentagem com vegetação em cada pixel.
     al : numpy array 3D
         porcentagem de cada uso do solo descoberto.
-    SrefD : numpy array 2D
+    sRef : numpy array 2D
         is the relative surface area covered with particles with diameter 
         https://agupubs.onlinelibrary.wiley.com/doi/10.1002/jgrd.50313
     ustar : numpy array 2D
@@ -52,21 +52,41 @@ def wbdFlux(av,al,SrefD,ustar,ustarT,ustarTd):
     Ca = 0.0006
     Cb = 1.36
     g = 9.81
-    
     # ===================CUIDADO!!!!
-    p = 10000 # asumi - montar matriz de Plastic pressure com base no solo
-    rob = 1.3 # g/cm³ - assumi - montar matriz de densidades
-    rop = 2.6 # g/cm³ assumi - montar matriz de densidades
+    p = 0.1 # asumi - montar matriz de Plastic pressure com base no solo
+    rob = 1.3 * 10**6 # g/cm³ - assumi - montar matriz de densidades
+    rop = 2.6* 10**6  # g/cm³ assumi - montar matriz de densidades
     f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo
-    roa = 1.2923 # g/cm³
+    roa = 1.2923* 10**6  # g/cm³
     c = 1
-    if ustar<ustarT:
-        Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
-    else:
-        Fhd = 0
-    
-    Fhtot = Fhd*SrefD
+    Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
+    Fhd[ustar<ustarT] = 0
+    Fhtot = Fhd*sRef
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
     Fvtot = alpha*Fhtot
-    Fdust = (1-av)*np.nansum(al*Fvtot)
+    Fdu = np.empty(Fvtot[0,:,:,:].shape)
+    Fdu[:,:,:] = np.nan
+    Fdust = []
+    for ii in range(0,al.shape[0]):
+        for jj in range(0,ustar.shape[1]):
+            Fdu[jj,:,:] = Fvtot[ii,jj,:,:]*al[ii,:,:]
+        Fdust.append(Fdu)
+    Fdust = np.array(Fdust)
     return Fdust
+
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(4,2)
+ax[0,0].pcolor(ustar[2,1,:,:])
+ax[0,1].pcolor(av[:,:])
+ax[1,0].pcolor(sRef[:,:])
+ax[1,1].pcolor(np.sum(al[:,:,:],axis=0))
+ax[2,0].pcolor(Fhd[2,1,:,:])
+ax[2,1].pcolor(Fvtot[2,1,:,:])
+ax[3,0].pcolor(Fhtot[2,1,:,:])
+ax[3,1].pcolor(np.nansum(np.nansum(Fdust[:,:,:,:],axis=0),axis=0))
+
+Fhtot[2,1,:,:][al[2,:,:]==0] = np.nan
+ustar[2,1,:,:][al[2,:,:]==0] = np.nan
+av[:,:][al[2,:,:]==0] = np.nan
+sRef[:,:][al[2,:,:]==0] = np.nan
+al[:,:,:][al[:,:,:]==0] = np.nan

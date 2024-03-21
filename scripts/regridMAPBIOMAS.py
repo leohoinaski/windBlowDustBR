@@ -3,6 +3,8 @@
 """
 Created on Wed Mar 13 19:45:10 2024
 
+inputs:  https://storage.googleapis.com/mapbiomas-public/initiatives/brasil/collection_8/lclu/coverage/brasil_coverage_2022.tif
+
 @author: leohoinaski
 """
 
@@ -80,9 +82,11 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
                 print(str(ii)+' '+str(jj))
                 matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
                 pixelsIn[ii,jj] = np.size(matArr[idr,idc])
-    av = (pixelsIn-np.sum(matRegrid, axis=0))/pixelsIn
+    av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn
     al = matRegrid/pixelsIn
-    return matRegrid,pixelsIn,av,al
+    alarea = matRegrid*30*30
+    return matRegrid,pixelsIn,av,al,alarea
+
 
 def createNETCDF(outfolder,name,data,xlon,ylat):
     print('===================STARTING createNETCDF.py=======================')
@@ -90,9 +94,15 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     f2 = nc.Dataset(outfolder+'/'+name+'.nc','w') #'w' stands for write 
     # # Specifying dimensions
     #tempgrp = f.createGroup('vehicularEmissions_data')
-    f2.createDimension('VAR', data.shape[0])
-    f2.createDimension('ROW', data.shape[1])
-    f2.createDimension('COL', data.shape[2])
+    if len(data.shape)>2:
+        f2.createDimension('VAR', data.shape[0])
+        f2.createDimension('ROW', data.shape[1])
+        f2.createDimension('COL', data.shape[2])
+    else:
+        f2.createDimension('VAR', 1)
+        f2.createDimension('ROW', data.shape[0])
+        f2.createDimension('COL', data.shape[1])
+    
     # Building variables
     # Passing data into variables
     LON = f2.createVariable('LON', 'f4', ( 'VAR','ROW','COL'))
@@ -102,8 +112,11 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     LON.units = 'degrees '
     LAT.units = 'degrees '
     MAT = f2.createVariable('MAT', np.float32, ('VAR','ROW','COL'))
-    for ii in range(0,data.shape[0]):
-        MAT[ii,:,:] = data[ii,:,:]
+    if len(data.shape)>2:
+        for ii in range(0,data.shape[0]):
+            MAT[ii,:,:] = data[ii,:,:]
+    else:
+        MAT[:,:,:] = data[:,:]
     f2.close()
     return f2
     
@@ -112,14 +125,14 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):
         print ('You already have the regridMAPBIOMAS_'+GRDNAM+'.nc file')
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
         ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc')
-        mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
-        al= ds['MAT'][len(idSoils),:,:] 
-        av= ds['MAT'][len(idSoils)+1,:,:] 
+        #mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
+        al= ds['MAT'][0:len(idSoils),:,:] 
+        av= ds['MAT'][len(idSoils),:,:] 
     else:
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
         out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
         x, y = rasterLatLon(outfolder,GRDNAM)
-        mapbioRegrid,pixelsIn,av,al= rasterInGrid(arr,x,y,lat,lon,idSoils)
+        mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils)
         matRegrid2=np.empty((len(idSoils)+1,lat.shape[0],lat.shape[1]))
         matRegrid2[:,:,:] = np.nan
         matRegrid2[0:len(idSoils),:,:] = al
@@ -127,7 +140,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):
         #name = 'regridMAPBIOMAS_'+GRDNAM
         #data = matRegrid2
         createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)
-    return mapbioRegrid,av,al,lat,lon,domainShp
+    return av,al,alarea,lat,lon,domainShp
 
 
 # wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
