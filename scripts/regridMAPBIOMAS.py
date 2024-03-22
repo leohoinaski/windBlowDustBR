@@ -83,7 +83,7 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
                 matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
                 pixelsIn[ii,jj] = np.size(matArr[idr,idc])
     av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn
-    al = matRegrid/pixelsIn
+    al = np.nansum(matRegrid,axis=0)/pixelsIn
     alarea = matRegrid*30*30
     return matRegrid,pixelsIn,av,al,alarea
 

@@ -5,9 +5,10 @@ Created on Fri Mar 15 15:20:44 2024
 
 @author: leohoinaski
 """
+import matplotlib.pyplot as plt
 import numpy as np
 
-def wbdFlux(av,al,sRef,ustar,ustarT,ustarTd):
+def wbdFlux(av,alarea,sRef,ustar,ustarT,ustarTd):
     """
     Parameters
     ----------
@@ -64,30 +65,15 @@ def wbdFlux(av,al,sRef,ustar,ustarT,ustarTd):
     Fhtot = Fhd*sRef
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
     Fvtot = alpha*Fhtot
-    Fdu = np.empty(Fvtot[0,:,:,:].shape)
+    Fdu = np.empty(Fvtot[:,:,:].shape)
     Fdu[:,:,:] = np.nan
     Fdust = []
-    for ii in range(0,al.shape[0]):
-        for jj in range(0,ustar.shape[1]):
-            Fdu[jj,:,:] = Fvtot[ii,jj,:,:]*al[ii,:,:]
+    for ii in range(0,alarea.shape[0]):
+        for jj in range(0,ustar.shape[0]):
+            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
     return Fdust
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(4,2)
-ax[0,0].pcolor(ustar[2,1,:,:])
-ax[0,1].pcolor(av[:,:])
-ax[1,0].pcolor(sRef[:,:])
-ax[1,1].pcolor(np.sum(al[:,:,:],axis=0))
-ax[2,0].pcolor(Fhd[2,1,:,:])
-ax[2,1].pcolor(Fvtot[2,1,:,:])
-ax[3,0].pcolor(Fhtot[2,1,:,:])
-ax[3,1].pcolor(np.nansum(np.nansum(Fdust[:,:,:,:],axis=0),axis=0))
 
-Fhtot[2,1,:,:][al[2,:,:]==0] = np.nan
-ustar[2,1,:,:][al[2,:,:]==0] = np.nan
-av[:,:][al[2,:,:]==0] = np.nan
-sRef[:,:][al[2,:,:]==0] = np.nan
-al[:,:,:][al[:,:,:]==0] = np.nan
-Fvtot[2,1,:,:][al[2,:,:]==0] = np.nan
+

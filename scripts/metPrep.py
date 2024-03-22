@@ -29,11 +29,7 @@ def ustarCalc(uz,z0):
     """
     k= 0.4 # von karman constant
     z= 10 # altura de referência
-    ustar = []
-    for ii in range(0,z0.shape[0]):
-        us = k*uz/np.log(z/z0[ii,:,:])
-        ustar.append(us)
-    ustar = np.array(ustar)
+    ustar = k*uz/np.log(z/z0)
     return ustar
 
 def roughness(tablePath,av,al):
@@ -41,27 +37,29 @@ def roughness(tablePath,av,al):
     hv = pd.read_csv(tablePath + '/hv.csv')
     alphaS = av*alpS['alphaS'][0] + np.nansum(al,axis=0)*alpS['alphaS'][2] 
     alphaV = -0.35*np.log(1-av)
+    alphaV[alphaV == np.inf] = 0
     alpha = alphaS + alphaV
-    hS= av*alpS['hs'][0] + np.nansum(al,axis=0)*alpS['hs'][2] 
-    hV = av*hv['mean'][0] + np.nansum(al,axis=0)*hv['mean'][2] 
+    hS= av*alpS['hs'][0] + al*alpS['hs'][2]
+    hV = av*hv['mean'][0] + al*hv['mean'][2]
     h = (hV*alphaV + hS*alphaS)/(alphaS + alphaV)
     z0 = alpha.copy() 
-    z0[alpha<0.2] = h[alpha<0.2]*0.96*alpha[alpha<0.2]**(1.07)
-    z0[alpha>=0.2] = h[alpha>=0.2]*0.083*alpha[alpha>=0.2]**(-0.46)
+    # z0[alpha<0.2] = h[alpha<0.2]*0.96*alpha[alpha<0.2]**(1.07)
+    # z0[alpha>=0.2] = h[alpha>=0.2]*0.083*alpha[alpha>=0.2]**(-0.46)
+    z0[alpha<0.2] = 0.96*alpha[alpha<0.2]**(1.07)
+    z0[alpha>=0.2] = 0.083*alpha[alpha>=0.2]**(-0.46)
     return z0,alphaV,alphaS
 
 def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     An = 0.0123
     tao = 1.65*10**(-4)
-    roa = 1.2923 # g/cm³
-    rop = 2.6 # g/cm³ assumi - montar matriz de densidades
+    roa = 1.2923*10**6 # g/cm³
+    rop = 2.6*10**6 # g/cm³ assumi - montar matriz de densidades
     g = 9.81
     ustarTd = np.sqrt(An*((rop*g*D/roa)+(tao/roa*D)))
     wl = 0.0014*(clayRegrid**2)+0.17*clayRegrid
     fm = np.empty(w.shape)
     fm[:,:,:]=np.nan
     fm=fm.astype(float)
-
     fm = (1+1.21*(w-wl)**(0.68))**(0.5)
     fm[w<wl] = 1 
     sigmaV = 1.45
@@ -70,11 +68,9 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     sigmaS = 1
     mS = 0.5
     betaS = 90
-    fr = ((1-sigmaV*mV*alphaV)*(1-betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
-    ustarT=[]
-    for ii in range(0,fr.shape[0]):
-        ustarT.append(ustarTd*fm*fr[ii,:,:])
-    ustarT = np.array(ustarT)
+    av[av==1]=0.999
+    fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
+    ustarT=ustarTd*fm*fr
     return ustarT,ustarTd
 
 def main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid):
