@@ -5,6 +5,10 @@ Created on Wed Mar 13 19:45:10 2024
 
 inputs:  https://storage.googleapis.com/mapbiomas-public/initiatives/brasil/collection_8/lclu/coverage/brasil_coverage_2022.tif
 
+
+https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2008JD011236
+
+
 @author: leohoinaski
 """
 

@@ -8,7 +8,7 @@ Created on Fri Mar 15 15:20:44 2024
 import matplotlib.pyplot as plt
 import numpy as np
 
-def wbdFlux(av,alarea,sRef,ustar,ustarT,ustarTd):
+def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     """
     Parameters
     ----------
@@ -54,14 +54,14 @@ def wbdFlux(av,alarea,sRef,ustar,ustarT,ustarTd):
     Cb = 1.36
     g = 9.81
     # ===================CUIDADO!!!!
-    p = 0.1 # asumi - montar matriz de Plastic pressure com base no solo
-    rob = 1.3 * 10**6 # g/cm³ - assumi - montar matriz de densidades
-    rop = 2.6* 10**6  # g/cm³ assumi - montar matriz de densidades
+    p = 0.5 # asumi - montar matriz de Plastic pressure com base no solo
+    rob = 1.3# g/cm³ - assumi - montar matriz de densidades
+    rop = 2.6 # g/cm³ assumi - montar matriz de densidades
     f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo
-    roa = 1.2923* 10**6  # g/cm³
+    roa = 1.227 # g/cm³
     c = 1
     Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
-    Fhd[ustar<ustarT] = 0
+    Fhd[ustarT>ustar] = 0
     Fhtot = Fhd*sRef
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
     Fvtot = alpha*Fhtot
@@ -70,7 +70,7 @@ def wbdFlux(av,alarea,sRef,ustar,ustarT,ustarTd):
     Fdust = []
     for ii in range(0,alarea.shape[0]):
         for jj in range(0,ustar.shape[0]):
-            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
+            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
     return Fdust

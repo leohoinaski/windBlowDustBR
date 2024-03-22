@@ -37,7 +37,7 @@ def roughness(tablePath,av,al):
     hv = pd.read_csv(tablePath + '/hv.csv')
     alphaS = av*alpS['alphaS'][0] + np.nansum(al,axis=0)*alpS['alphaS'][2] 
     alphaV = -0.35*np.log(1-av)
-    alphaV[alphaV == np.inf] = 0
+    alphaV[alphaV == np.inf] = np.nanmax(alphaV)
     alpha = alphaS + alphaV
     hS= av*alpS['hs'][0] + al*alpS['hs'][2]
     hV = av*hv['mean'][0] + al*hv['mean'][2]
@@ -52,10 +52,11 @@ def roughness(tablePath,av,al):
 def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     An = 0.0123
     tao = 1.65*10**(-4)
-    roa = 1.2923*10**6 # g/cm³
-    rop = 2.6*10**6 # g/cm³ assumi - montar matriz de densidades
+    roa = 1.227# g/cm³
+    rop = 2.650 # g/cm³ assumi - montar matriz de densidades
     g = 9.81
     ustarTd = np.sqrt(An*((rop*g*D/roa)+(tao/roa*D)))
+    clayRegrid = clayRegrid*100
     wl = 0.0014*(clayRegrid**2)+0.17*clayRegrid
     fm = np.empty(w.shape)
     fm[:,:,:]=np.nan
@@ -68,18 +69,19 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     sigmaS = 1
     mS = 0.5
     betaS = 90
-    av[av==1]=0.999
     fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
-    ustarT=ustarTd*fm*fr
+    ustarT=ustarTd*fm.data*fr
     return ustarT,ustarTd
 
 def main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid):
     #tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
-    z0,alphaV,alphaS = roughness(tablePath,av,al)
-    #metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
     ds = nc.Dataset(wrfoutPath)
+    avWRF = ds['VEGFRA'][:]/100
+    z0,alphaV,alphaS = roughness(tablePath,avWRF,al)
+    #metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
     uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,:,:,:])
     ustar = ustarCalc(uz,z0)
     w = ds['SMOIS'][:,0,:,:]
+    #ust = ds['UST'][:]
     ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av)
-    return ustar,ustarT,ustarTd
+    return ustar,ustarT,ustarTd,avWRF
