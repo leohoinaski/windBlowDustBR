@@ -70,9 +70,12 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     Fdust = []
     for ii in range(0,alarea.shape[0]):
         for jj in range(0,ustar.shape[0]):
-            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
+            # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
+            # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
+            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
+    Fdust = np.nansum(Fdust,axis=0)
     return Fdust
 
 

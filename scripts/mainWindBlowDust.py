@@ -14,6 +14,7 @@ import regridMAPBIOMAS as regMap
 import soilPrep as sp
 import metPrep as mp
 import windBlowDustCalc as wbd
+import netCDFcreator as ncCreate
 import os
 import numpy as np
 import geopandas as gpd
@@ -22,17 +23,20 @@ wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
 GRDNAM = 'SC_2019'
+RESET_GRID = True
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
 year = 2021
-idSoils = [23,24,30,25] #4.1. Praia, Duna e Areal  4.2. Área Urbanizada  4.3. Mineração 4.4. Outras Áreas não Vegetadas
-D = 10
-av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils)
-clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D)
-ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid)
-Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
+idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
+EmisD = [1,2.5,10]
 
+for D in EmisD:
+    av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
+    clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID)
+    ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid)
+    Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
+    #ncCreate.createNETCDFtemporal(rootPath,folder,name,data,mcipMETCRO3Dpath,D)
 # import matplotlib.pyplot as plt
 # fig, ax = plt.subplots(4, 2)
 # ax[0, 0].pcolor(lon,lat, np.nanmean(ustar[:, :, :],axis=0))
@@ -48,6 +52,7 @@ Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
 #         shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
 #         borderShape = gpd.read_file(shape_path)
 #         borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax[ii,jj])
+import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
 ax.pcolor(lon,lat,np.log(np.nansum(np.nansum(Fdust[:, :, :, :], axis=0), axis=0)))
 borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)

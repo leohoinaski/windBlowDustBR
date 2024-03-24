@@ -124,14 +124,30 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     f2.close()
     return f2
     
-def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils): 
+def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID): 
     if os.path.exists(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc'):
-        print ('You already have the regridMAPBIOMAS_'+GRDNAM+'.nc file')
-        domainShp,lat,lon =  createDomainShp(wrfoutPath)
-        ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc')
-        #mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
-        al= ds['MAT'][0:len(idSoils),:,:] 
-        av= ds['MAT'][len(idSoils),:,:] 
+        if RESET_GRID==False:
+            print ('You already have the regridMAPBIOMAS_'+GRDNAM+'.nc file')
+            domainShp,lat,lon =  createDomainShp(wrfoutPath)
+            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc')
+            #mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
+            al= ds['MAT'][0:len(idSoils),:,:] 
+            av= ds['MAT'][len(idSoils),:,:] 
+            alarea= ds['MAT'][(len(idSoils)+1):,:,:] 
+        else:
+            domainShp,lat,lon =  createDomainShp(wrfoutPath)
+            out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
+            x, y = rasterLatLon(outfolder,GRDNAM)
+            mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils)
+            matRegrid2=np.empty((len(idSoils)+1,lat.shape[0],lat.shape[1]))
+            matRegrid2[:,:,:] = np.nan
+            matRegrid2[0:len(idSoils),:,:] = al
+            matRegrid2[len(idSoils),:,:] = av
+            matRegrid2[(len(idSoils)+1):len(idSoils)+5,:,:] = alarea
+            #name = 'regridMAPBIOMAS_'+GRDNAM
+            #data = matRegrid2
+            createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)
+            
     else:
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
         out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
@@ -141,6 +157,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils):
         matRegrid2[:,:,:] = np.nan
         matRegrid2[0:len(idSoils),:,:] = al
         matRegrid2[len(idSoils),:,:] = av
+        matRegrid2[(len(idSoils)+1):len(idSoils)+5,:,:] = alarea
         #name = 'regridMAPBIOMAS_'+GRDNAM
         #data = matRegrid2
         createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)

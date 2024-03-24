@@ -120,12 +120,22 @@ def soilType(inputFolder,lat,lon,D):
     # ax.pcolor(sRef)
     return sRef
     
-def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D):
+def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
     if os.path.exists(outfolder+'/regridClay_'+GRDNAM+'.nc'):
-        print ('You already have the regridClay_'+GRDNAM+'.nc file')
-        ds = nc.Dataset(outfolder+'/regridClay_'+GRDNAM+'.nc')
-        clayRegrid = ds['MAT'][:]
-        sRef = soilType(inputFolder,lat,lon,D)
+        if RESET_GRID==False:
+            print ('You already have the regridClay_'+GRDNAM+'.nc file')
+            ds = nc.Dataset(outfolder+'/regridClay_'+GRDNAM+'.nc')
+            clayRegrid = ds['MAT'][:]
+            sRef = soilType(inputFolder,lat,lon,D)
+        else:
+            inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+            outfolder = os.path.dirname(os.getcwd())+'/outputs'
+            GRDNAM = 'SC_2019'
+            raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+            x, y = rasterLatLon(raster)
+            clayRegrid = rasterInGrid(raster,x,y,lat,lon)
+            regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
+            sRef = soilType(inputFolder,lat,lon,D)
     else:
         inputFolder = os.path.dirname(os.getcwd())+'/inputs'
         outfolder = os.path.dirname(os.getcwd())+'/outputs'
