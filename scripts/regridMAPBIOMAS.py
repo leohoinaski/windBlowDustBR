@@ -139,11 +139,11 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
             out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
             x, y = rasterLatLon(outfolder,GRDNAM)
             mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils)
-            matRegrid2=np.empty((len(idSoils)+1,lat.shape[0],lat.shape[1]))
+            matRegrid2=np.empty((len(idSoils)+1+alarea.shape[0],lat.shape[0],lat.shape[1]))
             matRegrid2[:,:,:] = np.nan
             matRegrid2[0:len(idSoils),:,:] = al
             matRegrid2[len(idSoils),:,:] = av
-            matRegrid2[(len(idSoils)+1):len(idSoils)+5,:,:] = alarea
+            matRegrid2[(len(idSoils)+1):(1+len(idSoils)+alarea.shape[0]),:,:] = alarea
             #name = 'regridMAPBIOMAS_'+GRDNAM
             #data = matRegrid2
             createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)

@@ -19,9 +19,9 @@ import os
 import numpy as np
 import geopandas as gpd
 
-wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+#wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-#wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
 GRDNAM = 'SC_2019'
 RESET_GRID = True
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
