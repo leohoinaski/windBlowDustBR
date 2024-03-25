@@ -18,12 +18,16 @@ import netCDFcreator as ncCreate
 import os
 import numpy as np
 import geopandas as gpd
+import netCDF4 as nc
 
-#wrfoutPath='/media/leohoinaski/HDD/SC_2019/wrfout_d02_2019-01-03_18:00:00'
+
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
+#wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-02-01'
+mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
 GRDNAM = 'SC_2019'
 RESET_GRID = True
+domain = 'd02'
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -31,12 +35,20 @@ year = 2021
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 EmisD = [1,2.5,10]
 
-for D in EmisD:
+for ii, D in enumerate(EmisD):
+    ds = nc.Dataset(mcipMETCRO3Dpath)
+    datesTime = ncCreate.datePrepCMAQ(ds)
+    file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
+             'wrfout_d02_'+str(datesTime.year[0]).zfill(4)+'-'+\
+                 str(datesTime.month[0]).zfill(2)+'-'+\
+                     str(datesTime.day[0]).zfill(2) in i][0]
+    wrfoutPath = wrfoutFolder+'/'+file
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
     clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID)
     ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid)
     Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
-    #ncCreate.createNETCDFtemporal(rootPath,folder,name,data,mcipMETCRO3Dpath,D)
+    ncCreate.createNETCDFtemporal(outfolder,'',Fdust,mcipMETCRO3Dpath,D)
+    RESET_GRID = False
 # import matplotlib.pyplot as plt
 # fig, ax = plt.subplots(4, 2)
 # ax[0, 0].pcolor(lon,lat, np.nanmean(ustar[:, :, :],axis=0))

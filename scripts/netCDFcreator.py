@@ -32,30 +32,51 @@ Last update = 29/09/2021
 Author: Leonardo Hoinaski - leonardo.hoinaski@ufsc.br
 -------------------------------------------------------------------------------
 """
-import netCDF4 as nc4
+import netCDF4 as nc
 #from pyproj import Proj, transform
 import numpy as np
-#import datetime
-#import pandas as pd
+import datetime
+import pandas as pd
 #import tarfile
 #import os
 
-def createNETCDFtemporal(rootPath,folder,name,data,mcipMETCRO3Dpath,D):
+def datePrepCMAQ(ds):
+    tf = np.array(ds['TFLAG'][:][:,1,:])
+    date=[]
+    for ii in range(0,tf.shape[0]):
+        date.append(datetime.datetime.strptime(tf[:,0].astype(str)[ii] + (tf[:,1]/10000).astype(int).astype(str)[ii], '%Y%j%H').strftime('%Y-%m-%d %H:00:00'))
+    
+    date = np.array(date,dtype='datetime64[s]')
+    dates = pd.DatetimeIndex(date)
+    datesTime=pd.DataFrame()
+    datesTime['year'] = dates.year
+    datesTime['month'] = dates.month
+    datesTime['day'] = dates.day
+    datesTime['hour'] = dates.hour
+    datesTime['datetime']=dates
+    return datesTime
+
+def createNETCDFtemporal(folder,name,data,mcipMETCRO3Dpath,D):
     print('===================STARTING netCDFcreator_v1.py=======================')
-          
-    f2 = nc4.Dataset(folder+'/'+name+'PM'+str(D).replace('.',''),'w', format='NETCDF3_CLASSIC') #'w' stands for write   
+    ds = nc.Dataset(mcipMETCRO3Dpath)  
+    datesTime = datePrepCMAQ(ds)
+    print('Initial date: '+str(datesTime.datetime[0]))
+    print('Final date: '+str(datesTime.datetime[datesTime.shape[0]-1]))
+    f2 = nc.Dataset(folder+'/'+name+'PM'+str(D).replace('.','')+'_'+\
+                    str(datesTime.datetime[0]).replace(' ','-')+'_'+\
+                    str(datesTime.datetime[datesTime.shape[0]-1]).replace(' ','-')+\
+                    '.nc','w', format='NETCDF3_CLASSIC') #'w' stands for write   
     #Add global attributes
     f2.IOAPI_VERSION ='$Id: @(#) ioapi library version 3.1 $'
     f2.EXEC_ID = '???????????????'
     f2.FTYPE =  1
-    ds3 = nc4.Dataset(mcipMETCRO3Dpath)
-    for gatr in ds3.ncattrs() :
-        setattr(f2, gatr, ds3.getncattr(gatr))
+    for gatr in ds.ncattrs() :
+        setattr(f2, gatr, ds.getncattr(gatr))
     # f2.VGTYP= -9999
     #f2.VGTOP= 0.0
     #f2.VGLVLS= [0,0]
     #f2.NLAYS = 1 
-    f2.NVARS= data.shape[1]
+    f2.NVARS= 1
     # f2.NCOLS = f2.NCOLS
     # f2.NROWS = f2.NROWS
     f2.FILEDESC= 'File produced by WindBlowDustBr.py'
@@ -64,10 +85,10 @@ def createNETCDFtemporal(rootPath,folder,name,data,mcipMETCRO3Dpath,D):
     #tempgrp = f.createGroup('vehicularEmissions_data')
     f2.createDimension('TSTEP', None )
     f2.createDimension('DATE-TIME', 2)
-    f2.createDimension('LAY', ds3.NLAYS)
+    f2.createDimension('LAY', ds.NLAYS)
     f2.createDimension('VAR', data.shape[1])
-    f2.createDimension('ROW', ds3.NROWS)
-    f2.createDimension('COL', ds3.NCOLS)
+    f2.createDimension('ROW', ds.NROWS)
+    f2.createDimension('COL', ds.NCOLS)
     
     # Building variables
     TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
@@ -87,7 +108,7 @@ def createNETCDFtemporal(rootPath,folder,name,data,mcipMETCRO3Dpath,D):
 
 
     # Passing data into variables
-    TFLAG[:,:,:] = np.repeat(ds3['TFLAG'][:,0,:][:, np.newaxis,:], 
+    TFLAG[:,:,:] = np.repeat(ds['TFLAG'][:,0,:][:, np.newaxis,:], 
                              data.shape[1], axis=1)
     TFLAG.units = '<YYYYDDD,HHMMSS>'
     TFLAG.var_desc = 'Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS'
