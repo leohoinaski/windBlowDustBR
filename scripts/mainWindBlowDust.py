@@ -24,10 +24,10 @@ import netCDF4 as nc
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
 #wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-02-01'
+domain = 'd02'
 mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
 GRDNAM = 'SC_2019'
 RESET_GRID = True
-domain = 'd02'
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -39,7 +39,7 @@ for ii, D in enumerate(EmisD):
     ds = nc.Dataset(mcipMETCRO3Dpath)
     datesTime = ncCreate.datePrepCMAQ(ds)
     file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
-             'wrfout_d02_'+str(datesTime.year[0]).zfill(4)+'-'+\
+             'wrfout_'+domain+'_'+str(datesTime.year[0]).zfill(4)+'-'+\
                  str(datesTime.month[0]).zfill(2)+'-'+\
                      str(datesTime.day[0]).zfill(2) in i][0]
     wrfoutPath = wrfoutFolder+'/'+file
