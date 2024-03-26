@@ -56,10 +56,21 @@ def datePrepCMAQ(ds):
     datesTime['datetime']=dates
     return datesTime
 
-def createNETCDFtemporal(folder,name,data,mcipMETCRO3Dpath,D):
+def datePrepWRF(date):
+    date = np.array(date,dtype='datetime64[s]')
+    dates = pd.DatetimeIndex(date)
+    datesTime=pd.DataFrame()
+    datesTime['year'] = dates.year
+    datesTime['month'] = dates.month
+    datesTime['day'] = dates.day
+    datesTime['hour'] = dates.hour
+    datesTime['datetime']=dates
+    return datesTime
+
+def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,D):
     print('===================STARTING netCDFcreator_v1.py=======================')
     ds = nc.Dataset(mcipMETCRO3Dpath)  
-    datesTime = datePrepCMAQ(ds)
+    #datesTime = datePrepCMAQ(ds)
     print('Initial date: '+str(datesTime.datetime[0]))
     print('Final date: '+str(datesTime.datetime[datesTime.shape[0]-1]))
     f2 = nc.Dataset(folder+'/'+name+'PM'+str(D).replace('.','')+'_'+\
@@ -85,13 +96,20 @@ def createNETCDFtemporal(folder,name,data,mcipMETCRO3Dpath,D):
     #tempgrp = f.createGroup('vehicularEmissions_data')
     f2.createDimension('TSTEP', None )
     f2.createDimension('DATE-TIME', 2)
-    f2.createDimension('LAY', ds.NLAYS)
-    f2.createDimension('VAR', data.shape[1])
-    f2.createDimension('ROW', ds.NROWS)
-    f2.createDimension('COL', ds.NCOLS)
+    f2.createDimension('LAY', 1)
+    f2.createDimension('VAR', 1)
+    f2.createDimension('ROW', data.shape[1])
+    f2.createDimension('COL', data.shape[2])
     
+    tflag = np.empty([data.shape[0],1,2],dtype='i4')
+    for ii in range(0,data.shape[0]):
+        tflag[ii,:,0]=int(datesTime['year'][0]*1000 + datesTime.datetime[ii].timetuple().tm_yday)
+        tflag[ii,:,1]=int(str(datesTime['hour'][ii])+'0000')
+        
     # Building variables
     TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
+    TFLAG[:,:,:] = tflag
+    TFLAG.units = '<YYYYDDD,HHMMSS>'
     
     strVAR = ''
     polids = ['PM'+str(D).replace('.','')]
@@ -101,17 +119,12 @@ def createNETCDFtemporal(folder,name,data,mcipMETCRO3Dpath,D):
     setattr(f2, 'VAR-LIST', strVAR)
     
     for ii, pid in enumerate(polids):
-        globals()[pid] = f2.createVariable(pid, np.float32, ('TSTEP', 'LAY', 'ROW','COL'))
-        globals()[pid][:,:,:,:] = data[ii,:,:,:,:]
+        globals()[pid] = f2.createVariable(pid, np.float32, ('TSTEP', 'ROW','COL'))
+        globals()[pid][:,:,:] = data[:,:,:]
         globals()[pid].var_desc = pid+'[1]'
         globals()[pid].units = 'VERIFICAR!!'
 
 
-    # Passing data into variables
-    TFLAG[:,:,:] = np.repeat(ds['TFLAG'][:,0,:][:, np.newaxis,:], 
-                             data.shape[1], axis=1)
-    TFLAG.units = '<YYYYDDD,HHMMSS>'
-    TFLAG.var_desc = 'Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS'
    
     f2.close()
     print('WindBlowDust emissions in netCDF format is ready for CMAQ!')

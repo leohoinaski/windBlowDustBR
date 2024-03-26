@@ -19,17 +19,19 @@ import os
 import numpy as np
 import geopandas as gpd
 import netCDF4 as nc
+import wrf
+import pandas as pd
 
 
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-#wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
-wrfoutFolder='/mnt/sdb1/SC_2019'
+wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
+#wrfoutFolder='/mnt/sdb1/SC_2019'
 domain = 'd02'
-#mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
-mcipMETCRO3Dpath ='/mnt/sdb1/SC_2019/METCRO3D_SC_2019.nc'
+mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
+#mcipMETCRO3Dpath ='/mnt/sdb1/SC_2019/METCRO3D_SC_2019.nc'
 
 GRDNAM = 'SC_2019'
-RESET_GRID = True
+RESET_GRID = False
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -45,11 +47,13 @@ for ii, D in enumerate(EmisD):
                  str(datesTime.month[0]).zfill(2)+'-'+\
                      str(datesTime.day[0]).zfill(2) in i][0]
     wrfoutPath = wrfoutFolder+'/'+file
+    ds = nc.Dataset(wrfoutPath)
+    datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
     clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID)
     ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid)
     Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
-    ncCreate.createNETCDFtemporal(outfolder,'',Fdust,mcipMETCRO3Dpath,D)
+    ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',Fdust,datesTime,mcipMETCRO3Dpath,D)
     RESET_GRID = False
 # import matplotlib.pyplot as plt
 # fig, ax = plt.subplots(4, 2)
@@ -66,7 +70,7 @@ for ii, D in enumerate(EmisD):
 #         shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
 #         borderShape = gpd.read_file(shape_path)
 #         borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax[ii,jj])
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.log(np.nansum(np.nansum(Fdust[:, :, :, :], axis=0), axis=0)))
-borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# ax.pcolor(lon,lat,np.log(np.nansum(np.nansum(Fdust[:, :, :, :], axis=0), axis=0)))
+# borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
