@@ -22,10 +22,12 @@ import netCDF4 as nc
 
 
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
-#wrfoutPath='/mnt/sdb1/SC_2019/wrfout_d02_2019-02-01'
+#wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
+wrfoutFolder='/mnt/sdb1/SC_2019'
 domain = 'd02'
-mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
+#mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
+mcipMETCRO3Dpath ='/mnt/sdb1/SC_2019/METCRO3D_SC_2019.nc'
+
 GRDNAM = 'SC_2019'
 RESET_GRID = True
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
