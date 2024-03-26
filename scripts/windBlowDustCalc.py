@@ -62,6 +62,7 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     c = 1
     Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
     Fhd[ustarT>ustar] = 0
+    Fhd[Fhd<0] = 0
     Fhtot = Fhd*sRef
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
     Fvtot = alpha*Fhtot

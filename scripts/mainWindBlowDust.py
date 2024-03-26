@@ -38,6 +38,7 @@ outfolder = os.path.dirname(os.getcwd())+'/outputs'
 year = 2021
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 EmisD = [1,2.5,10]
+EmisD = [5]
 
 for ii, D in enumerate(EmisD):
     ds = nc.Dataset(mcipMETCRO3Dpath)
