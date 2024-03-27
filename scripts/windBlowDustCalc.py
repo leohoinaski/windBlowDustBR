@@ -54,7 +54,7 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     Cb = 1.36
     g = 9.81
     # ===================CUIDADO!!!!
-    p = 0.5 # asumi - montar matriz de Plastic pressure com base no solo
+    p = 10000 #0.5 # asumi - montar matriz de Plastic pressure com base no solo
     rob = 1.3# g/cm³ - assumi - montar matriz de densidades
     rop = 2.6 # g/cm³ assumi - montar matriz de densidades
     f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo

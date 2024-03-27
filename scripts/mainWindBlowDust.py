@@ -21,17 +21,17 @@ import geopandas as gpd
 import netCDF4 as nc
 import wrf
 import pandas as pd
-
-
+from datetime import timedelta
+import ismember
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
-#wrfoutFolder='/mnt/sdb1/SC_2019'
-domain = 'd02'
-mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
-#mcipMETCRO3Dpath ='/mnt/sdb1/SC_2019/METCRO3D_SC_2019.nc'
+#wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
+wrfoutFolder='/mnt/sdb1/BR_2019'
+domain = 'd01'
+#mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
+mcipMETCRO3Dpath ='/mnt/sdb1/BR_2019/METCRO3D_BR_2019.nc'
 
-GRDNAM = 'SC_2019'
-RESET_GRID = False
+GRDNAM = 'BR_2019'
+RESET_GRID = True
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -40,19 +40,25 @@ idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Ár
 EmisD = [1,2.5,10]
 EmisD = [5]
 
+
 for ii, D in enumerate(EmisD):
     ds = nc.Dataset(mcipMETCRO3Dpath)
-    datesTime = ncCreate.datePrepCMAQ(ds)
+    datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
+    # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
+    #          'wrfout_'+domain+'_'+str(datesTimeMCIP.year[0]).zfill(4)+'-'+\
+    #              str(datesTimeMCIP.month[0]).zfill(2)+'-'+\
+    #                  str(datesTimeMCIP.day[0]).zfill(2) in i]
     file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
-             'wrfout_'+domain+'_'+str(datesTime.year[0]).zfill(4)+'-'+\
-                 str(datesTime.month[0]).zfill(2)+'-'+\
-                     str(datesTime.day[0]).zfill(2) in i][0]
-    wrfoutPath = wrfoutFolder+'/'+file
+             'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
+                 str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
+                     str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
+    wrfoutPath = wrfoutFolder+'/'+file[0]
     ds = nc.Dataset(wrfoutPath)
     datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
+    lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
     clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID)
-    ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid)
+    ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid,lia)
     Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',Fdust,datesTime,mcipMETCRO3Dpath,D)
     RESET_GRID = False

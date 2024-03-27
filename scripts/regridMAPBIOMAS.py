@@ -46,23 +46,30 @@ def cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM):
                          "width": out_image.shape[2],
                          "transform": out_transform})
             out_image[out_image==0]=26
+            
+            if out_meta:   
+                with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', "w", **out_meta) as dest:
+                    dest.write(out_image)
+                with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', 'r') as ds:
+                    arr = ds.read()[0,:,:] 
         except:
-            out_meta=None
-            arr=[]
-        if out_meta:   
-            with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', "w", **out_meta) as dest:
-                dest.write(out_image)
-            with rs.open(outfolder+'/mapbiomas_'+GRDNAM+'.tif', 'r') as ds:
-                arr = ds.read()[0,:,:] 
+            out_meta=src.meta
+            arr = src 
     return out_meta,arr
 
-def rasterLatLon(outfolder,GRDNAM):
-    raster = riox.open_rasterio(outfolder+'/mapbiomas_'+GRDNAM+'.tif')
+def rasterLatLon(outfolder,GRDNAM,inputFolder,year):
+    try:
+        raster = riox.open_rasterio(outfolder+'/mapbiomas_'+GRDNAM+'.tif')
+    except:
+        raster = riox.open_rasterio(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif')
+        
     x = raster.x.values
     y = raster.y.values
     return x, y
 
-def rasterInGrid(arr,x,y,lat,lon,idSoils):
+def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder):
+    if type(arr)==rasterio.io.DatasetReader:
+        arr = riox.open_rasterio(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif')
     lonsIdx = []
     for i in x:
         idx = (np.abs(i - lon[0,:])).argmin()
@@ -76,16 +83,31 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils):
     pixelsIn=np.empty((lat.shape[0],lat.shape[1]))
     matRegrid[:,:,:] = np.nan
     for kk, soilid in enumerate(idSoils):
-        matArr = arr.copy()
-        matArr[matArr!=soilid]=0
-        matArr[matArr==soilid]=1
-        for ii in range(0,lat.shape[0]):
-            for jj in range(lon.shape[1]):
-                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
-                #print(matArr[idr,idc].sum())
-                print(str(ii)+' '+str(jj))
-                matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
-                pixelsIn[ii,jj] = np.size(matArr[idr,idc])
+        
+        try:
+            matArr = arr.copy()
+            matArr[matArr!=soilid]=0
+            matArr[matArr==soilid]=1
+            #my_rast.where(my_rast != 1, 10)
+            for ii in range(0,lat.shape[0]):
+                for jj in range(lon.shape[1]):
+                    idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                    #print(matArr[idr,idc].sum())
+                    print(str(ii)+' '+str(jj))
+                    matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
+                    pixelsIn[ii,jj] = np.size(matArr[idr,idc])
+        except:
+            #my_rast.where(my_rast != 1, 10)
+            for ii in range(0,lat.shape[0]):
+                matArr = arr[0,ii].data
+                matArr[matArr!=soilid]=0
+                matArr[matArr==soilid]=1
+                for jj in range(lon.shape[1]):
+                    idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                    #print(matArr[idr,idc].sum())
+                    print(str(ii)+' '+str(jj))
+                    matRegrid[kk,ii,jj]=matArr[idc].sum()
+                    pixelsIn[ii,jj] = np.size(matArr[idc])
     av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn
     al = np.nansum(matRegrid,axis=0)/pixelsIn
     alarea = matRegrid*30*30
@@ -137,8 +159,8 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
         else:
             domainShp,lat,lon =  createDomainShp(wrfoutPath)
             out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-            x, y = rasterLatLon(outfolder,GRDNAM)
-            mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils)
+            x, y = rasterLatLon(outfolder,GRDNAM,inputFolder,year)
+            mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder)
             matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
             matRegrid2[:,:,:] = np.nan
             matRegrid2[0,:,:] = al
@@ -151,8 +173,8 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
     else:
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
         out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-        x, y = rasterLatLon(outfolder,GRDNAM)
-        mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils)
+        x, y = rasterLatLon(outfolder,GRDNAM,inputFolder,year)
+        mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder)
         matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
         matRegrid2[:,:,:] = np.nan
         matRegrid2[0,:,:] = al

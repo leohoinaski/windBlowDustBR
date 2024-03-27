@@ -107,7 +107,8 @@ def soilType(inputFolder,lat,lon,D):
         soilSect = soilDist[soilDist.Type==soiln]
         y=soilSect.iloc[0,1:][::-1].cumsum()
         cs = log_interp1d(x.astype(float),y.astype(float))
-        pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=cs(D)/100
+        fd1 = cs._spline.derivative(nu=1)
+        pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)/100
     sRef =  np.reshape(pointInPolys['Sref'],lat.shape)
     #import matplotlib.pyplot as plt 
     # fig,ax = plt.subplots()
