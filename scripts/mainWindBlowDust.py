@@ -24,14 +24,14 @@ import pandas as pd
 from datetime import timedelta
 import ismember
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-#wrfoutFolder='/media/leohoinaski/HDD/SC_2019'
-wrfoutFolder='/mnt/sdb1/BR_2019'
+wrfoutFolder=rootFolder+'/BR_2019'
+#wrfoutFolder='/mnt/sdb1/BR_2019'
 domain = 'd01'
-#mcipMETCRO3Dpath ='/media/leohoinaski/HDD/SC_2019/METCRO3D_SC_2019.nc'
-mcipMETCRO3Dpath ='/mnt/sdb1/BR_2019/METCRO3D_BR_2019.nc'
+mcipMETCRO3Dpath =rootFolder+'/BR_2019/METCRO3D_BR_2019.nc'
+#mcipMETCRO3Dpath ='/mnt/sdb1/BR_2019/METCRO3D_BR_2019.nc'
 
 GRDNAM = 'BR_2019'
-RESET_GRID = True
+RESET_GRID = False
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -42,6 +42,7 @@ EmisD = [5]
 
 
 for ii, D in enumerate(EmisD):
+    diam = np.arange(0.1,D+0.1,0.1)
     ds = nc.Dataset(mcipMETCRO3Dpath)
     datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
     # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
@@ -57,11 +58,19 @@ for ii, D in enumerate(EmisD):
     datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
     lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
-    clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID)
-    ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid,lia)
-    Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
-    ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',Fdust,datesTime,mcipMETCRO3Dpath,D)
-    RESET_GRID = False
+    for jj,diameters in enumerate(diam):
+        print(diameters)
+        clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,diameters,RESET_GRID)
+        ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,diameters,clayRegrid,lia)
+        Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
+        RESET_GRID = False
+        if jj==0:
+            FdustTotal = Fdust
+        else:
+            FdustTotal = FdustTotal+Fdust
+    
+    ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustTotal,datesTime,mcipMETCRO3Dpath,D)
+
 # import matplotlib.pyplot as plt
 # fig, ax = plt.subplots(4, 2)
 # ax[0, 0].pcolor(lon,lat, np.nanmean(ustar[:, :, :],axis=0))

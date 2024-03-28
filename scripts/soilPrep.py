@@ -34,33 +34,49 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     # raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True).squeeze()
     # raster = raster.rio.reproject('EPSG:4326')
     #raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', masked=True)
-
-    with rs.open(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif') as src:
-        print('crop extent crs: ', domainShp.crs)
-        print('raster crs: ', src.crs)
-        domainShp5880  = domainShp.to_crs({'init':  src.crs})
-        print('crop extent crs: ', domainShp5880.crs)
-        try:
-            out_image, out_transform = rasterio.mask.mask(src,domainShp5880.geometry,
-                                                          crop=True)
-            out_meta = src.meta
-            out_meta.update({"driver": "GTiff",
-                         "height": out_image.shape[1],
-                         "width": out_image.shape[2],
-                         "transform": out_transform})
-        except:
-            out_meta=None
-            raster=[]
-        if out_meta:   
-            with rs.open(outfolder+'/clay_'+GRDNAM+'.tif', "w", **out_meta) as dest:
-                dest.write(out_image)
-            raster = riox.open_rasterio(outfolder+'/clay_'+GRDNAM+'.tif', masked=True).squeeze()
-            raster = raster.rio.reproject('EPSG:4326')    
-    del out_image, out_transform, out_meta
-    raster = raster/1000
+    df_mercator = domainShp.to_crs("epsg:3857")
+    areaDomain = df_mercator.area/10**6
+    if areaDomain[0]<2*10**6:
+        with rs.open(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif') as src:
+            print('crop extent crs: ', domainShp.crs)
+            print('raster crs: ', src.crs)
+            domainShp5880  = domainShp.to_crs({'init':  src.crs})
+            print('crop extent crs: ', domainShp5880.crs)
+            try:
+                out_image, out_transform = rasterio.mask.mask(src,domainShp5880.geometry,
+                                                              crop=True)
+                out_meta = src.meta
+                out_meta.update({"driver": "GTiff",
+                             "height": out_image.shape[1],
+                             "width": out_image.shape[2],
+                             "transform": out_transform})
+            except:
+                out_meta=None
+                raster=[]
+            if out_meta:   
+                with rs.open(outfolder+'/clay_'+GRDNAM+'.tif', "w", **out_meta) as dest:
+                    dest.write(out_image)
+                raster = riox.open_rasterio(outfolder+'/clay_'+GRDNAM+'.tif', masked=True).squeeze()
+                raster = raster.rio.reproject('EPSG:4326')    
+        del out_image, out_transform, out_meta
+        raster = raster/1000
+    else:
+        from rasterio.enums import Resampling
+        print('Using original raster')
+        raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
+        downscale_factor = 1/2
+        #Caluculate new height and width using downscale_factor
+        new_width = raster.rio.width * downscale_factor
+        new_height = raster.rio.height * downscale_factor
+        #downsample raster
+        raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), int(new_width)), resampling=Resampling.bilinear)
+        # print(raster.rio.resolution(), down_sampled.rio.resolution())
+        # # ((500.0, -500.0), (1000.4340277777777, -1000.0))
+        # print(raster.shape, down_sampled.shape)
+        #raster = raster/1000
     return raster
 
-def rasterInGrid(raster,x,y,lat,lon):
+def rasterInGrid(domainShp,raster,x,y,lat,lon):
     lonsIdx = []
     for i in x:
         idx = (np.abs(i - lon[0,:])).argmin()
@@ -69,26 +85,39 @@ def rasterInGrid(raster,x,y,lat,lon):
     for i in y:
         idx = (np.abs(i - lat[:,0])).argmin()
         latsIdx.append(idx)
+    df_mercator = domainShp.to_crs("epsg:3857")
+    areaDomain = df_mercator.area/10**6
     matRegrid=np.empty((lat.shape[0],lat.shape[1]))
     matRegrid[:,:] = np.nan
-    matArr = raster.values.copy()
-    for ii in range(0,lat.shape[0]):
-        for jj in range(lon.shape[1]):
-            idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
-            #print(matArr[idr,idc].sum())
-            print(str(ii)+' '+str(jj))
-            matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
-    del matArr
+    if areaDomain[0]<2*10**6:
+        matArr = raster.values.copy()
+        for ii in range(0,lat.shape[0]):
+            for jj in range(lon.shape[1]):
+                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                #print(matArr[idr,idc].sum())
+                print(str(ii)+' '+str(jj))
+                matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
+    else:
+        for ii in range(0,lat.shape[0]):
+            matArr = raster[0,ii].data/1000
+            for jj in range(lon.shape[1]):
+                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                #print(matArr[idr,idc].sum())
+                print(str(ii)+' '+str(jj))
+                matRegrid[ii,jj]=np.nanmedian(matArr[idc])
+    #del matArr,raster
     return matRegrid
 
 def log_interp1d(xx, yy, kind='linear'):
-    logx = np.log10(xx)
-    logy = np.log10(yy)
-    lin_interp = scipy.interpolate.interp1d(logx, logy, 
-                                            kind=kind,
-                                            fill_value='extrapolate')
-    log_interp = lambda zz: np.power(10.0, lin_interp(np.log10(zz)))
-    return log_interp
+    from scipy.interpolate import UnivariateSpline
+    spl = UnivariateSpline(xx, yy)
+    # logx = np.log10(xx)
+    # logy = np.log10(yy)
+    # lin_interp = scipy.interpolate.interp1d(logx, logy, 
+    #                                         kind=kind,
+    #                                         fill_value='extrapolate')
+    # log_interp = lambda zz: np.power(10.0, lin_interp(np.log10(zz)))
+    return spl
 
 def soilType(inputFolder,lat,lon,D):
     points = gpd.GeoSeries(map(Point, zip(lon.flatten(), lat.flatten()))).set_crs(4326, allow_override=True)
@@ -107,8 +136,14 @@ def soilType(inputFolder,lat,lon,D):
         soilSect = soilDist[soilDist.Type==soiln]
         y=soilSect.iloc[0,1:][::-1].cumsum()
         cs = log_interp1d(x.astype(float),y.astype(float))
-        fd1 = cs._spline.derivative(nu=1)
-        pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)/100
+        fd1 = cs.derivative()
+        if (fd1(D)<0):
+            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=0
+        elif (fd1(D)>1):
+            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=1
+        else:
+            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)
+
     sRef =  np.reshape(pointInPolys['Sref'],lat.shape)
     #import matplotlib.pyplot as plt 
     # fig,ax = plt.subplots()
@@ -132,19 +167,21 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
         else:
             inputFolder = os.path.dirname(os.getcwd())+'/inputs'
             outfolder = os.path.dirname(os.getcwd())+'/outputs'
-            GRDNAM = 'SC_2019'
+            #GRDNAM = 'SC_2019'
             raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
             x, y = rasterLatLon(raster)
-            clayRegrid = rasterInGrid(raster,x,y,lat,lon)
+            clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+            print('Creating netCDF')
             regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
             sRef = soilType(inputFolder,lat,lon,D)
     else:
         inputFolder = os.path.dirname(os.getcwd())+'/inputs'
         outfolder = os.path.dirname(os.getcwd())+'/outputs'
-        GRDNAM = 'SC_2019'
+        #GRDNAM = 'SC_2019'
         raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
         x, y = rasterLatLon(raster)
-        clayRegrid = rasterInGrid(raster,x,y,lat,lon)
+        clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+        print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
         sRef = soilType(inputFolder,lat,lon,D)
     return clayRegrid,sRef

@@ -73,7 +73,7 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     ustarT=ustarTd*fm.data*fr
     return ustarT,ustarTd
 
-def main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid,lia):
+def main(wrfoutPath,tablePath,av,al,D,clayRegrid,lia):
     #tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
     ds = nc.Dataset(wrfoutPath)
     avWRF = ds['VEGFRA'][lia,:,:]/100
@@ -81,7 +81,7 @@ def main(wrfoutPath,tablePath,av,al,alarea,D,clayRegrid,lia):
     #metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
     uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,lia,:,:])
     ustar = ustarCalc(uz,z0)
-    w = ds['SMOIS'][0,lia,:,:]
+    w = ds['SMOIS'][lia,0,:,:]
     #ust = ds['UST'][:]
     ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av)
     return ustar,ustarT,ustarTd,avWRF
