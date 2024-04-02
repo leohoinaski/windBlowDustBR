@@ -38,7 +38,7 @@ outfolder = os.path.dirname(os.getcwd())+'/outputs'
 year = 2021
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 EmisD = [1,2.5,10]
-#EmisD = [5]
+EmisD = [2.5]
 dx = 0.5
 
 
@@ -67,29 +67,55 @@ for ii, D in enumerate(EmisD):
         print(diameters)
         clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,diameters,RESET_GRID)
         ustar,ustarT,ustarTd,avWRF = mp.main(wrfoutPath,tablePath,av,al,diameters,clayRegrid,lia)
-        Fdust = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
+        Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd)
         RESET_GRID = False
         FdustTotal.append(Fdust)
     FdustTotal = np.stack(FdustTotal)
     FdustD = np.trapz(FdustTotal,dx=dx, axis=0)
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime,mcipMETCRO3Dpath,D)
 
+#%%
 import matplotlib.pyplot as plt
-fig, ax = plt.subplots(4, 2)
-ax[0, 0].pcolor(lon,lat, np.nanmean(ustar[:, :, :],axis=0))
-ax[0, 1].pcolor(lon,lat,av[:, :])
-ax[1, 0].pcolor(lon,lat,sRef[:, :])
-ax[1, 1].pcolor(lon,lat,alarea[0,:, :])
-# ax[2, 0].pcolor(lon,lat,np.nanmean(Fhd,axis=0))
-# ax[2, 1].pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
-# ax[3, 0].pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
-ax[3, 1].pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0))
-for ii in range(0,4):
-    for jj in range(0,2):
-        shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
-        borderShape = gpd.read_file(shape_path)
-        borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax[ii,jj])
-import matplotlib.pyplot as plt
+shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
+borderShape = gpd.read_file(shape_path)
+
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.log(np.nansum(FdustD[ :, :, :], axis=0)))
-borderShape[borderShape['NM_MUN']=='Sul'].boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :],axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('ustar')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,av[:, :])
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('av')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,sRef[:, :])
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('sRef')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,alarea[0,:, :])
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('alarea')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('clayRegrid')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('Fvtot')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('Fhtot')
+
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('FdustD')
+

@@ -79,7 +79,7 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
     Fdust = np.nansum(Fdust,axis=0)
-    return Fdust
+    return Fdust,Fhd,Fhtot,Fvtot
 
 
 

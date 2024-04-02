@@ -32,18 +32,25 @@ def rasterLatLon(domainShp,raster):
         x = raster.x.values
         y = raster.y.values
     else:
+        raster = raster.rio.reproject("EPSG:4326")
         x = raster.x.values
         y = raster.y.values
         #xx,yy = np.meshgrid(x,y)
-        for xi in x:
-            for yi in y:
-                df1 = pd.DataFrame({'X':xi, 'Y':yi})
-                df1['coords'] = list(zip(df1['X'], df1['Y']))
-                df1['coords'] = df1['coords'].apply(Point)
-                gdf1 = gpd.GeoDataFrame(df1, geometry='coords')
-                gdf1 = gdf1.to_crs(4326)
-                x = gdf1.geometry.x
-                y = gdf1.geometry.y
+        # xnew=[]
+        # ynew=[]
+        # print('CONVERTING LATLON')
+        # for ii,xi in enumerate(x):
+        #     print(str(ii)+' of '+ str(np.size(x)))
+        #     df1 = pd.DataFrame({'X':np.repeat(xi,np.size(y)), 'Y':y})
+        #     df1['coords'] = list(zip(df1['X'], df1['Y']))
+        #     df1['coords'] = df1['coords'].apply(Point)
+        #     gdf1 = gpd.GeoDataFrame(df1, geometry='coords')
+        #     gdf1.crs = "EPSG:5880"
+        #     gdf1 = gdf1.to_crs(4326)
+        #     xnew.append(gdf1.geometry.x)
+        #     ynew.append(gdf1.geometry.y)
+        # x = np.unique(np.array(xnew))
+        # y = np.unique(np.array(ynew))
         
     return x, y
 
@@ -81,7 +88,7 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
         from rasterio.enums import Resampling
         print('Using original raster')
         raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
-        downscale_factor = 1/2
+        downscale_factor = 1/5
         #Caluculate new height and width using downscale_factor
         new_width = raster.rio.width * downscale_factor
         new_height = raster.rio.height * downscale_factor
@@ -90,7 +97,8 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
         # print(raster.rio.resolution(), down_sampled.rio.resolution())
         # # ((500.0, -500.0), (1000.4340277777777, -1000.0))
         # print(raster.shape, down_sampled.shape)
-        #raster = raster/1000
+        raster = raster/1000
+        raster = raster.where(raster>0)
     return raster
 
 def rasterInGrid(domainShp,raster,x,y,lat,lon):
@@ -117,6 +125,7 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
                                                      np.where(np.array(lonsIdx)==jj)])
                 #matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
     else:
+        raster = raster.rio.reproject("EPSG:4326")
         for ii in range(0,lat.shape[0]):
             for jj in range(lon.shape[1]):
                 #print(matArr[idr,idc].sum())
@@ -131,16 +140,23 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
     #del matArr,raster
     return matRegrid
 
-def log_interp1d(xx, yy, kind='linear'):
-    from scipy.interpolate import UnivariateSpline
-    spl = UnivariateSpline(xx, yy)
-    # logx = np.log10(xx)
-    # logy = np.log10(yy)
-    # lin_interp = scipy.interpolate.interp1d(logx, logy, 
-    #                                         kind=kind,
-    #                                         fill_value='extrapolate')
-    # log_interp = lambda zz: np.power(10.0, lin_interp(np.log10(zz)))
-    return spl
+
+# def log_interp1d(xx, yy, kind='linear'):
+#     # from scipy.interpolate import UnivariateSpline
+#     # spl = UnivariateSpline(xx, yy)
+#     from scipy.interpolate import interp1d
+#     spl = interp1d(xx, yy, kind='cubic',bounds_error=False)
+#     # logx = np.log10(xx)
+#     # logy = np.log10(yy)
+#     # lin_interp = scipy.interpolate.interp1d(logx, logy, 
+#     #                                         kind=kind,
+#     #                                         fill_value='extrapolate')
+#     # log_interp = lambda zz: np.power(10.0, lin_interp(np.log10(zz)))
+#     return spl
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
 
 def soilType(inputFolder,lat,lon,D):
     points = gpd.GeoSeries(map(Point, zip(lon.flatten(), lat.flatten()))).set_crs(4326, allow_override=True)
@@ -151,21 +167,31 @@ def soilType(inputFolder,lat,lon,D):
     soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='media'] = 'Silt'
     soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='argilosa  ou muito argilosa'] = 'Clay'
     pointInPolys = gpd.tools.sjoin(points, soil, how='left')
-    soilDist = pd.read_csv(inputFolder+'/tables/soil_particleDist.csv')
-    x=soilDist.columns[1:].values.astype(float)[::-1]
     soilNames=['Sand', 'Silt', 'Clay']
     pointInPolys['Sref'] = np.nan
     for soiln in soilNames:
-        soilSect = soilDist[soilDist.Type==soiln]
-        y=soilSect.iloc[0,1:][::-1].cumsum()
-        cs = log_interp1d(x.astype(float),y.astype(float))
-        fd1 = cs.derivative()
-        if (fd1(D)<0):
-            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=0
-        elif (fd1(D)>1):
-            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=1
-        else:
-            pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)
+        soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
+        x=soilDist['D']*1000
+        y=soilDist['P']
+        f = lambda x,mu,sigma: scipy.stats.norm(mu,sigma).cdf(x)
+        mu,sigma = scipy.optimize.curve_fit(f,x,y/100)[0]
+        #xx = np.arange(0,800,0.01)
+        ff = f(D,mu,sigma)
+        #deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
+        # plt.plot(xx,deriv,'-r')
+        # plt.plot(xx,f(xx,mu,sigma)*100,'-b')
+        # plt.plot(x,y,'og')
+        # #cs = log_interp1d(x.astype(float),y.astype(float))
+        # #fd1 = cs.derivative()
+        #idx = find_nearest(xx, D)
+        pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=ff
+
+        # if (fd1(D)<0):
+        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=0
+        # elif (fd1(D)>1):
+        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=1
+        # else:
+        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)
 
     sRef =  np.reshape(pointInPolys['Sref'],lat.shape)
     #import matplotlib.pyplot as plt 
