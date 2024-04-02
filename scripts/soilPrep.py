@@ -32,15 +32,17 @@ def rasterLatLon(domainShp,raster):
         x = raster.x.values
         y = raster.y.values
     else:
-        x = raster.reproject("EPSG:4326").x.values
-        y = raster.reproject("EPSG:4326").y.values
-        df1 = pd.DataFrame({'X':x, 'Y':y})
-        df1['coords'] = list(zip(df1['X'], df1['Y']))
-        df1['coords'] = df1['coords'].apply(Point)
-        gdf1 = gpd.GeoDataFrame(df1, geometry='coords')
-        gdf1 = gdf1.to_crs(4326)
-        x = gdf1.geometry.x
-        y = gdf1.geometry.y
+        x = raster.x.values
+        y = raster.y.values
+        #xx,yy = np.meshgrid(x,y)
+        for xi,yi in x,y:
+            df1 = pd.DataFrame({'X':xi, 'Y':yi})
+            df1['coords'] = list(zip(df1['X'], df1['Y']))
+            df1['coords'] = df1['coords'].apply(Point)
+            gdf1 = gpd.GeoDataFrame(df1, geometry='coords')
+            gdf1 = gdf1.to_crs(4326)
+            x = gdf1.geometry.x
+            y = gdf1.geometry.y
         
     return x, y
 
