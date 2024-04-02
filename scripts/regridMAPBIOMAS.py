@@ -91,23 +91,35 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder):
             #my_rast.where(my_rast != 1, 10)
             for ii in range(0,lat.shape[0]):
                 for jj in range(lon.shape[1]):
-                    idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                    #idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
                     #print(matArr[idr,idc].sum())
                     print(str(ii)+' '+str(jj))
-                    matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
-                    pixelsIn[ii,jj] = np.size(matArr[idr,idc])
+                    matRegrid[kk,ii,jj]= matArr[np.where(np.array(latsIdx)==ii),
+                                                np.where(np.array(lonsIdx)==jj)]
+                    #matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
+                    pixelsIn[ii,jj] = np.size(matArr[np.where(np.array(latsIdx)==ii),
+                                                np.where(np.array(lonsIdx)==jj)])
+                    #pixelsIn[ii,jj] = np.size(matArr[idr,idc])
         except:
             #my_rast.where(my_rast != 1, 10)
             for ii in range(0,lat.shape[0]):
-                matArr = arr[0,ii].data
-                matArr[matArr!=soilid]=0
-                matArr[matArr==soilid]=1
+                # matArr = arr[0,:,:].data
+                # matArr[matArr!=soilid]=0
+                # matArr[matArr==soilid]=1
                 for jj in range(lon.shape[1]):
                     idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
                     #print(matArr[idr,idc].sum())
                     print(str(ii)+' '+str(jj))
-                    matRegrid[kk,ii,jj]=matArr[idc].sum()
-                    pixelsIn[ii,jj] = np.size(matArr[idc])
+                    if idc.shape[0]>0:
+                        matArr = arr[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                        matArr[matArr!=soilid]=0
+                        matArr[matArr==soilid]=1
+                        matRegrid[kk,ii,jj]=matArr.sum()
+                        if matArr.sum()>0:
+                            print('------------>Soil in grid')
+                    else:
+                        matRegrid[kk,ii,jj]=0
+                    pixelsIn[ii,jj] = np.size(matArr)
     av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn
     al = np.nansum(matRegrid,axis=0)/pixelsIn
     alarea = matRegrid*30*30

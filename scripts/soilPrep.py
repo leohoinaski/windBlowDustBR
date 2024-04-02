@@ -24,10 +24,24 @@ import rioxarray as riox
 import regridMAPBIOMAS as regMap
 import scipy
 
-def rasterLatLon(raster):
+def rasterLatLon(domainShp,raster):
+    df_mercator = domainShp.to_crs("epsg:3857")
+    areaDomain = df_mercator.area/10**6
     #raster = riox.open_rasterio(outfolder+'/clay_'+GRDNAM+'.tif')
-    x = raster.x.values
-    y = raster.y.values
+    if areaDomain[0]<2*10**6:
+        x = raster.x.values
+        y = raster.y.values
+    else:
+        x = raster.reproject("EPSG:4326").x.values
+        y = raster.reproject("EPSG:4326").y.values
+        df1 = pd.DataFrame({'X':x, 'Y':y})
+        df1['coords'] = list(zip(df1['X'], df1['Y']))
+        df1['coords'] = df1['coords'].apply(Point)
+        gdf1 = gpd.GeoDataFrame(df1, geometry='coords')
+        gdf1 = gdf1.to_crs(4326)
+        x = gdf1.geometry.x
+        y = gdf1.geometry.y
+        
     return x, y
 
 def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
@@ -93,18 +107,24 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
         matArr = raster.values.copy()
         for ii in range(0,lat.shape[0]):
             for jj in range(lon.shape[1]):
-                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
+                #idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
                 #print(matArr[idr,idc].sum())
                 print(str(ii)+' '+str(jj))
-                matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
+                matRegrid[ii,jj]=np.nanmedian(matArr[np.where(np.array(latsIdx)==ii),
+                                                     np.where(np.array(lonsIdx)==jj)])
+                #matRegrid[ii,jj]=np.nanmedian(matArr[idr,idc])
     else:
         for ii in range(0,lat.shape[0]):
-            matArr = raster[0,ii].data/1000
             for jj in range(lon.shape[1]):
-                idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
                 #print(matArr[idr,idc].sum())
                 print(str(ii)+' '+str(jj))
-                matRegrid[ii,jj]=np.nanmedian(matArr[idc])
+                if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
+                    (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+                    matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                    matRegrid[ii,jj]=np.nanmedian(matArr)
+                    print('------------>Contain Clay')
+                else:
+                    matRegrid[ii,jj]=0
     #del matArr,raster
     return matRegrid
 
@@ -169,7 +189,7 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
             outfolder = os.path.dirname(os.getcwd())+'/outputs'
             #GRDNAM = 'SC_2019'
             raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
-            x, y = rasterLatLon(raster)
+            x, y = rasterLatLon(domainShp,raster)
             clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
             print('Creating netCDF')
             regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
@@ -179,7 +199,7 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
         outfolder = os.path.dirname(os.getcwd())+'/outputs'
         #GRDNAM = 'SC_2019'
         raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
-        x, y = rasterLatLon(raster)
+        x, y = rasterLatLon(domainShp,raster)
         clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
         print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
