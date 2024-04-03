@@ -90,12 +90,12 @@ borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('av')
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,sRef[:, :])
+ax.pcolor(lon,lat,sRef[0,:, :])
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('sRef')
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,alarea[0,:, :])
+ax.pcolor(lon,lat,np.log(alarea[0,:, :]))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('alarea')
 
@@ -115,7 +115,7 @@ borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('Fhtot')
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0))
+ax.pcolor(lon,lat,np.log(np.nansum(FdustD[:, :, :], axis=0)))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('FdustD')
 

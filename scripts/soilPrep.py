@@ -159,51 +159,63 @@ def find_nearest(array, value):
     return idx
 
 def soilType(inputFolder,lat,lon,D):
-    points = gpd.GeoSeries(map(Point, zip(lon.flatten(), lat.flatten()))).set_crs(4326, allow_override=True)
-    points = gpd.GeoDataFrame(geometry=points)
-    soil = gpd.read_file(inputFolder+'/Solos_5000mil/Solos_5000.shp').set_crs(4326, allow_override=True)
-    soil['SoilType'] = np.nan
-    soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='arenosa'] = 'Sand'
-    soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='media'] = 'Silt'
-    soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='argilosa  ou muito argilosa'] = 'Clay'
-    pointInPolys = gpd.tools.sjoin(points, soil, how='left')
+
+    raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
+    x = raster.x.values
+    y = raster.y.values
+   
     soilNames=['Sand', 'Silt', 'Clay']
-    pointInPolys['Sref'] = np.nan
-    for soiln in soilNames:
+    for kk,soiln in enumerate(soilNames):
         soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
-        x=soilDist['D']*1000
-        y=soilDist['P']
+        xs=soilDist['D']*1000
+        ys=soilDist['P']
         f = lambda x,mu,sigma: scipy.stats.norm(mu,sigma).cdf(x)
-        mu,sigma = scipy.optimize.curve_fit(f,x,y/100)[0]
-        #xx = np.arange(0,800,0.01)
-        ff = f(D,mu,sigma)
-        #deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
+        mu,sigma = scipy.optimize.curve_fit(f,xs,ys/100)[0]
+        xx = np.arange(0,800,0.01)
+        #ff = f(D,mu,sigma)
+        deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
         # plt.plot(xx,deriv,'-r')
         # plt.plot(xx,f(xx,mu,sigma)*100,'-b')
         # plt.plot(x,y,'og')
         # #cs = log_interp1d(x.astype(float),y.astype(float))
         # #fd1 = cs.derivative()
-        #idx = find_nearest(xx, D)
-        pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=ff
-
-        # if (fd1(D)<0):
-        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=0
-        # elif (fd1(D)>1):
-        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=1
-        # else:
-        #     pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=fd1(D)
-
-    sRef =  np.reshape(pointInPolys['Sref'],lat.shape)
-    #import matplotlib.pyplot as plt 
-    # fig,ax = plt.subplots()
-    # soil.plot(ax=ax)
-    # points.plot(ax=ax)
+        idx = find_nearest(xx, D)
+        raster.data[raster==kk+1]=deriv[idx]
+        #pointInPolys['Sref'][np.array(pointInPolys['SoilType']).astype(str)==soiln]=ff
+    lonsIdx = []
+    for i in x:
+        idx = (np.abs(i - lon[0,:])).argmin()
+        lonsIdx.append(idx)
+    latsIdx = []
+    for i in y:
+        idx = (np.abs(i - lat[:,0])).argmin()
+        latsIdx.append(idx)
+    
+    sRef=np.empty((1,lat.shape[0],lat.shape[1]))
+    sRef[:,:,:] = np.nan
+    for ii in range(0,lat.shape[0]):
+        for jj in range(lon.shape[1]):
+            #print(matArr[idr,idc].sum())
+            print(str(ii)+' '+str(jj))
+            if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
+                (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+                matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                sRef[0,ii,jj]=np.nanmedian(matArr)
+            else:
+                sRef[0,ii,jj]=np.nan
+    # soil = gpd.read_file(inputFolder+'/Solos_5000mil/Solos_5000.shp').set_crs(4326, allow_override=True)
+    # soil['SoilType'] = np.nan
+    # soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='arenosa'] = 'Sand'
+    # soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='media'] = 'Silt'
+    # soil['SoilType'][soil.DSC_TEXTUR.values.astype(str)=='argilosa  ou muito argilosa'] = 'Clay'
+    # soil['SoilTypeNumber'] = np.nan
+    # soil['SoilTypeNumber'][soil.DSC_TEXTUR.values.astype(str)=='arenosa'] = 1
+    # soil['SoilTypeNumber'][soil.DSC_TEXTUR.values.astype(str)=='media'] = 2
+    # soil['SoilTypeNumber'][soil.DSC_TEXTUR.values.astype(str)=='argilosa  ou muito argilosa'] = 3
+    # soil.to_file(inputFolder+'/Solos_5000mil/SolosTextures.shp', driver='ESRI Shapefile')
+    # import matplotlib.pyplot as plt 
     # fig, ax = plt.subplots(figsize=(6.5, 4))
-    # ax.plot(x,y, 'o', label='data')
-    # ax.plot(np.arange(1,1000,1),
-    #         cs(np.arange(1,1000,1)), label="S")
-    # fig, ax = plt.subplots(figsize=(6.5, 4))
-    # ax.pcolor(sRef)
+    # ax.pcolor(np.log(sRef[0,:,:]))
     return sRef
     
 def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
@@ -212,7 +224,13 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
             print ('You already have the regridClay_'+GRDNAM+'.nc file')
             ds = nc.Dataset(outfolder+'/regridClay_'+GRDNAM+'.nc')
             clayRegrid = ds['MAT'][:]
-            sRef = soilType(inputFolder,lat,lon,D)
+            if os.path.exists(outfolder+'/sRef_'+GRDNAM+'.nc') :
+                print ('You already have the sRef_'+GRDNAM+'.nc file')
+                ds = nc.Dataset(outfolder+'/sRef_'+GRDNAM+'.nc')
+                sRef = ds['MAT'][:]
+            else:
+                sRef = soilType(inputFolder,lat,lon,D)
+                regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
         else:
             inputFolder = os.path.dirname(os.getcwd())+'/inputs'
             outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -223,6 +241,7 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
             print('Creating netCDF')
             regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
             sRef = soilType(inputFolder,lat,lon,D)
+            regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
     else:
         inputFolder = os.path.dirname(os.getcwd())+'/inputs'
         outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -233,4 +252,5 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
         print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
         sRef = soilType(inputFolder,lat,lon,D)
+        regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
     return clayRegrid,sRef
