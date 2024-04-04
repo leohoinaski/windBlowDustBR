@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', default=0, action='count')
     parser.add_argument('windBlowDustFolder')
-    parser.add_argument('mcipMETCRO3Dpath')
+    parser.add_argument('mcipPath')
     parser.add_argument('wrfoutFolder')
     parser.add_argument('domain')
     parser.add_argument('GDNAM')
@@ -38,12 +38,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     windBlowDustFolder = args.windBlowDustFolder
-    mcipMETCRO3Dpath = args.mcipMETCRO3Dpath
+    mcipPath = args.mcipPath
     wrfoutFolder = args.wrfoutFolder
     domain = args.domain
+    domain = 'd0'+domain
     GDNAM  = args.GDNAM
     YEAR = args.YEAR
     RESET_GRID = args.RESET_GRID
+    mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
     if RESET_GRID == 0:
         RESET_GRID=False
     else:
@@ -81,7 +83,7 @@ if __name__ == '__main__':
        
     inputFolder = windBlowDustFolder+'/inputs'
     tablePath = windBlowDustFolder+'/inputs/tables'
-    outfolder = windBlowDustFolder+'/outputs'
+    outfolder = windBlowDustFolder+'/'+GDNAM+'/Outputs'
     
     if os.path.isdir(outfolder):
         os.makedirs(outfolder, exist_ok=True)

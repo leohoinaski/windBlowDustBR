@@ -159,11 +159,11 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     return f2
     
 def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID): 
-    if os.path.exists(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc'):
+    if os.path.exists(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc'):
         if RESET_GRID==False:
-            print ('You already have the regridMAPBIOMAS_'+GRDNAM+'.nc file')
+            print ('You already have the regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc file')
             domainShp,lat,lon =  createDomainShp(wrfoutPath)
-            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+GRDNAM+'.nc')
+            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc')
             #mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
             al= ds['MAT'][0,:,:] 
             av= ds['MAT'][1,:,:] 
@@ -180,7 +180,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
             matRegrid2[2:(2+alarea.shape[0]),:,:] = alarea
             #name = 'regridMAPBIOMAS_'+GRDNAM
             #data = matRegrid2
-            createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)
+            createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GRDNAM,matRegrid2,lon,lat)
             
     else:
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
@@ -194,7 +194,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
         matRegrid2[2:(2+alarea.shape[0]),:,:] = alarea
         #name = 'regridMAPBIOMAS_'+GRDNAM
         #data = matRegrid2
-        createNETCDF(outfolder,'regridMAPBIOMAS_'+GRDNAM,matRegrid2,lon,lat)
+        createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GRDNAM,matRegrid2,lon,lat)
     return av,al,alarea,lat,lon,domainShp
 
 
