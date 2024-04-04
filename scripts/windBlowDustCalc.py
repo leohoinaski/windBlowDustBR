@@ -5,22 +5,22 @@ Created on Fri Mar 15 15:20:44 2024
 
 @author: leohoinaski
 """
-import matplotlib.pyplot as plt
+
 import numpy as np
 
 def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     """
     Parameters
     ----------
-    av : numpy array 2D
-        porcentagem com vegetação em cada pixel.
+    avWRF : numpy array 2D
+        porcentagem com vegetação em cada pixel do WRF.
     al : numpy array 3D
         porcentagem de cada uso do solo descoberto.
     sRef : numpy array 2D
         is the relative surface area covered with particles with diameter 
         https://agupubs.onlinelibrary.wiley.com/doi/10.1002/jgrd.50313
     ustar : numpy array 2D
-        Friction velocity .
+        Friction velocity do WRF.
     ustarT : numpy array 2D
         threshold friction velocity
     ustarTd : numpy array 2D
@@ -55,13 +55,13 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     g = 9.81
     # ===================CUIDADO!!!!
     p = 10000 #0.5 # asumi - montar matriz de Plastic pressure com base no solo
-    rob = 1.3# g/cm³ - assumi - montar matriz de densidades
-    rop = 2.6 # g/cm³ assumi - montar matriz de densidades
+    rob = 1.3# kg/m³ - assumi - montar matriz de densidades
+    rop = 2.6 # kg/m³ assumi - montar matriz de densidades
     f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo
-    roa = 1.227 # g/cm³
+    roa = 1.227 # kg/m³
     c = 1
-    Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
-    Fhd[ustarT>ustar] = 0
+    Fhd = ((c*roa*(ustar.data**3))/g)*(1-(ustarTd/ustar.data))*((1+(ustarTd/ustar.data))**2)
+    Fhd[ustarT>ustar.data] = 0
     Fhd[Fhd<0] = 0
     Fhtot = Fhd*sRef
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
@@ -75,6 +75,8 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
             # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
             Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
             Fdu[ii,alarea[ii,:,:]<=0]=np.nan
+            Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
+            Fdu[ii,np.isnan(ustar.data[ii,:,:])]=np.nan
             Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
             Fdu[ii,sRef[0,:,:]<=0]=np.nan
         Fdust.append(Fdu)

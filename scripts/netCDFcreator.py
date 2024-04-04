@@ -67,15 +67,15 @@ def datePrepWRF(date):
     datesTime['datetime']=dates
     return datesTime
 
-def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,D):
+def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     print('===================STARTING netCDFcreator_v1.py=======================')
     ds = nc.Dataset(mcipMETCRO3Dpath)  
     #datesTime = datePrepCMAQ(ds)
-    print('Initial date: '+str(datesTime.datetime[0]))
-    print('Final date: '+str(datesTime.datetime[datesTime.shape[0]-1]))
-    f2 = nc.Dataset(folder+'/'+name+'PM'+str(D).replace('.','')+'_'+\
-                    str(datesTime.datetime[0]).replace(' ','-')+'_'+\
-                    str(datesTime.datetime[datesTime.shape[0]-1]).replace(' ','-')+\
+    print('Initial date: '+str(datesTime.datetime.iloc[0]))
+    print('Final date: '+str(datesTime.datetime.iloc[datesTime.shape[0]-1]))
+    f2 = nc.Dataset(folder+'/'+name+EmisD['tag']+'_'+\
+                    str(datesTime.datetime.iloc[0]).replace(' ','-')+'_'+\
+                    str(datesTime.datetime.iloc[datesTime.shape[0]-1]).replace(' ','-')+\
                     '.nc','w', format='NETCDF3_CLASSIC') #'w' stands for write   
     #Add global attributes
     f2.IOAPI_VERSION ='$Id: @(#) ioapi library version 3.1 $'
@@ -103,8 +103,8 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,D):
     
     tflag = np.empty([data.shape[0],1,2],dtype='i4')
     for ii in range(0,data.shape[0]):
-        tflag[ii,:,0]=int(datesTime['year'][0]*1000 + datesTime.datetime[ii].timetuple().tm_yday)
-        tflag[ii,:,1]=int(str(datesTime['hour'][ii])+'0000')
+        tflag[ii,:,0]=int(datesTime['year'].iloc[0]*1000 + datesTime.datetime.iloc[ii].timetuple().tm_yday)
+        tflag[ii,:,1]=int(str(datesTime['hour'].iloc[ii])+'0000')
         
     # Building variables
     TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
@@ -112,7 +112,7 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,D):
     TFLAG.units = '<YYYYDDD,HHMMSS>'
     
     strVAR = ''
-    polids = ['PM'+str(D).replace('.','')]
+    polids = [EmisD['tag']]
     for ids in polids:
         strVAR = strVAR + ids.ljust(16)
     #strVAR ='ACET            ACROLEIN        ALD2            ALD2_PRIMARY    ALDX            BENZ            BUTADIENE13     CH4             CH4_INV         CL2             CO              CO2_INV         ETH             ETHA            ETHY            ETOH            FORM            FORM_PRIMARY    HCL             HONO            IOLE            ISOP            KET             MEOH            N2O_INV         NAPH            NH3             NH3_FERT        NO              NO2             NVOL            OLE             PAL             PAR             PCA             PCL             PEC             PFE             PH2O            PK              PMC             PMG             PMN             PMOTHR          PNA             PNCOM           PNH4            PNO3            POC             PRPA            PSI             PSO4            PTI             SO2             SOAALK          SULF            TERP            TOL             UNK             UNR             VOC_INV         XYLMN           '
@@ -122,7 +122,7 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,D):
         globals()[pid] = f2.createVariable(pid, np.float32, ('TSTEP', 'ROW','COL'))
         globals()[pid][:,:,:] = data[:,:,:]
         globals()[pid].var_desc = pid+'[1]'
-        globals()[pid].units = 'VERIFICAR!!'
+        globals()[pid].units = EmisD['Unit']
 
 
    
