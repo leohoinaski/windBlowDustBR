@@ -68,14 +68,15 @@ def datePrepWRF(date):
     return datesTime
 
 def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
+    data[np.isnan(data)]=0
     print('===================STARTING netCDFcreator_v1.py=======================')
     ds = nc.Dataset(mcipMETCRO3Dpath)  
     #datesTime = datePrepCMAQ(ds)
-    print('Initial date: '+str(datesTime.datetime.iloc[0]))
-    print('Final date: '+str(datesTime.datetime.iloc[datesTime.shape[0]-1]))
+    print('Initial date: '+str(datesTime.iloc[0,-1]))
+    print('Final date: '+str(datesTime.iloc[-1,-1]))
     f2 = nc.Dataset(folder+'/'+name+EmisD['tag']+'_'+\
-                    str(datesTime.datetime.iloc[0]).replace(' ','-')+'_'+\
-                    str(datesTime.datetime.iloc[datesTime.shape[0]-1]).replace(' ','-')+\
+                    str(datesTime.iloc[0,-1]).replace(' ','-')+'_'+\
+                    str(datesTime.iloc[-1,-1]).replace(' ','-')+\
                     '.nc','w', format='NETCDF3_CLASSIC') #'w' stands for write   
     #Add global attributes
     f2.IOAPI_VERSION ='$Id: @(#) ioapi library version 3.1 $'

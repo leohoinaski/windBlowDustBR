@@ -83,9 +83,11 @@ if __name__ == '__main__':
        
     inputFolder = windBlowDustFolder+'/inputs'
     tablePath = windBlowDustFolder+'/inputs/tables'
-    outfolder = windBlowDustFolder+'/'+GDNAM+'/Outputs'
+    outfolder = windBlowDustFolder+'/Outputs/'+GDNAM
     
     if os.path.isdir(outfolder):
+        print('You have the outputs folder')
+    else:
         os.makedirs(outfolder, exist_ok=True)
     
     ds = nc.Dataset(mcipMETCRO3Dpath)
@@ -99,7 +101,7 @@ if __name__ == '__main__':
     datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
     lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,outfolder,YEAR,idSoils,RESET_GRID)
-    
+    print(datesTime.iloc[lia,:])
     for EmisD  in Fractions:
         Dmax = np.max(EmisD['range'])
         Dmin = np.min(EmisD['range'])
@@ -115,7 +117,7 @@ if __name__ == '__main__':
             FdustTotal.append(Fdust)
         FdustTotal = np.stack(FdustTotal)
         FdustD = np.trapz(FdustTotal,dx=dx, axis=0)*1000 # converte para g VERIFICAR!
-        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime[lia],mcipMETCRO3Dpath,EmisD)
+        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime.iloc[lia,:],mcipMETCRO3Dpath,EmisD)
         if EmisD==PM25:
             FdustFINE = FdustD
         elif EmisD==PMC:

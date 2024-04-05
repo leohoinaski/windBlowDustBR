@@ -50,9 +50,11 @@ PM1 = {
 }
 
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder=rootFolder+'/BR_2019'
+#wrfoutFolder = rootFolder+'/BR_2019'
+wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+
 domain = 'd01'
-mcipMETCRO3Dpath =rootFolder+'/BR_2019/METCRO3D_BR_2019.nc'
+mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
 GRDNAM = 'BR_2019'
 RESET_GRID = False
@@ -64,12 +66,8 @@ Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro.
 
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
-outfolder = os.path.dirname(os.getcwd())+'/'+GRDNAM+'/Outputs'
+outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GRDNAM
 
-if os.path.isdir(outfolder):
-    os.makedirs(outfolder, exist_ok=True)
-    
-    
 ds = nc.Dataset(mcipMETCRO3Dpath)
 datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
 # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
