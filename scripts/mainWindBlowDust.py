@@ -64,8 +64,12 @@ Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro.
 
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
-outfolder = os.path.dirname(os.getcwd())+'/outputs'
+outfolder = os.path.dirname(os.getcwd())+'/'+GRDNAM+'/Outputs'
 
+if os.path.isdir(outfolder):
+    os.makedirs(outfolder, exist_ok=True)
+    
+    
 ds = nc.Dataset(mcipMETCRO3Dpath)
 datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
 # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
