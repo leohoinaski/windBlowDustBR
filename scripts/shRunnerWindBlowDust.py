@@ -75,6 +75,13 @@ if __name__ == '__main__':
       "tag":'PMULTRAFINE',
       "range":[0,1] # micrometers
     }
+    
+    ALL = {
+      "Unit": '$\g.S^{-1}$',
+      "tag":'AllFractions',
+      "fractions":['PMFINE','PMC','PM10'] # micrometers
+    }
+
 
     idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
     dx = 0.1 # dx para integração das emissões das frações.
@@ -131,4 +138,7 @@ if __name__ == '__main__':
             print('You do not have the fractions required for PM10')   
             
     
+    FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
+    FdustALL = np.stack(FdustALL,axis=0)
+    ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,datesTime[lia],mcipMETCRO3Dpath,ALL)
     

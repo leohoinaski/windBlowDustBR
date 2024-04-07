@@ -70,6 +70,7 @@ def datePrepWRF(date):
 def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     data[np.isnan(data)]=0
     print('===================STARTING netCDFcreator_v1.py=======================')
+    print(data.shape)
     ds = nc.Dataset(mcipMETCRO3Dpath)  
     #datesTime = datePrepCMAQ(ds)
     print('Initial date: '+str(datesTime.iloc[0,-1]))
@@ -88,7 +89,6 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     #f2.VGTOP= 0.0
     #f2.VGLVLS= [0,0]
     #f2.NLAYS = 1 
-    f2.NVARS= 1
     # f2.NCOLS = f2.NCOLS
     # f2.NROWS = f2.NROWS
     f2.FILEDESC= 'File produced by WindBlowDustBr.py'
@@ -98,32 +98,67 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     f2.createDimension('TSTEP', None )
     f2.createDimension('DATE-TIME', 2)
     f2.createDimension('LAY', 1)
-    f2.createDimension('VAR', 1)
-    f2.createDimension('ROW', data.shape[1])
-    f2.createDimension('COL', data.shape[2])
     
-    tflag = np.empty([data.shape[0],1,2],dtype='i4')
-    for ii in range(0,data.shape[0]):
-        tflag[ii,:,0]=int(datesTime['year'].iloc[0]*1000 + datesTime.datetime.iloc[ii].timetuple().tm_yday)
-        tflag[ii,:,1]=int(str(datesTime['hour'].iloc[ii])+'0000')
+    if len(data.shape)==3:
+        f2.NVARS= 1
+        f2.createDimension('VAR', 1)
+        f2.createDimension('ROW', data.shape[1])
+        f2.createDimension('COL', data.shape[2])
+        tflag = np.empty([data.shape[0],1,2],dtype='i4')
+        for ii in range(0,data.shape[0]):
+            tflag[ii,:,0]=int(datesTime['year'].iloc[0]*1000 + datesTime.datetime.iloc[ii].timetuple().tm_yday)
+            tflag[ii,:,1]=int(str(datesTime['hour'].iloc[ii])+'0000')
+        # Building variables
+        TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
+        TFLAG[:,:,:] = tflag
+        TFLAG.units = '<YYYYDDD,HHMMSS>'
         
-    # Building variables
-    TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
-    TFLAG[:,:,:] = tflag
-    TFLAG.units = '<YYYYDDD,HHMMSS>'
+        strVAR = ''
+        polids = [EmisD['tag']]
+        for ids in polids:
+            strVAR = strVAR + ids.ljust(16)
+        #strVAR ='ACET            ACROLEIN        ALD2            ALD2_PRIMARY    ALDX            BENZ            BUTADIENE13     CH4             CH4_INV         CL2             CO              CO2_INV         ETH             ETHA            ETHY            ETOH            FORM            FORM_PRIMARY    HCL             HONO            IOLE            ISOP            KET             MEOH            N2O_INV         NAPH            NH3             NH3_FERT        NO              NO2             NVOL            OLE             PAL             PAR             PCA             PCL             PEC             PFE             PH2O            PK              PMC             PMG             PMN             PMOTHR          PNA             PNCOM           PNH4            PNO3            POC             PRPA            PSI             PSO4            PTI             SO2             SOAALK          SULF            TERP            TOL             UNK             UNR             VOC_INV         XYLMN           '
+        setattr(f2, 'VAR-LIST', strVAR)
+        
+        for ii, pid in enumerate(polids):
+            globals()[pid] = f2.createVariable(pid, np.float32, ('TSTEP', 'ROW','COL'))
+            globals()[pid][:,:,:] = data[:,:,:]
+            globals()[pid].var_desc = pid+'[1]'
+            globals()[pid].units = EmisD['Unit']
+    else:
+        f2.NVARS= data.shape[0]
+        f2.createDimension('VAR', data.shape[0])
+        f2.createDimension('ROW', data.shape[2])
+        f2.createDimension('COL', data.shape[3])
+        tflag = np.empty([data.shape[1],1,2],dtype='i4')
+        for ii in range(0,datesTime.shape[0]):
+            tflag[ii,:,0]=int(datesTime['year'].iloc[0]*1000 + datesTime.datetime.iloc[ii].timetuple().tm_yday)
+            tflag[ii,:,1]=int(str(datesTime['hour'].iloc[ii])+'0000')
+        # Building variables
+        TFLAG = f2.createVariable('TFLAG', 'i4', ('TSTEP', 'VAR', 'DATE-TIME'))
+        TFLAG[:,:,:] = tflag
+        TFLAG.units = '<YYYYDDD,HHMMSS>'
+        
+        strVAR = ''
+        #polids = EmisD['fractions']
+        polid = pd.DataFrame()
+        polid['ID'] = EmisD['fractions']
+        for ids in polid.ID:
+            strVAR = strVAR + ids.ljust(16)
+        #strVAR ='ACET            ACROLEIN        ALD2            ALD2_PRIMARY    ALDX            BENZ            BUTADIENE13     CH4             CH4_INV         CL2             CO              CO2_INV         ETH             ETHA            ETHY            ETOH            FORM            FORM_PRIMARY    HCL             HONO            IOLE            ISOP            KET             MEOH            N2O_INV         NAPH            NH3             NH3_FERT        NO              NO2             NVOL            OLE             PAL             PAR             PCA             PCL             PEC             PFE             PH2O            PK              PMC             PMG             PMN             PMOTHR          PNA             PNCOM           PNH4            PNO3            POC             PRPA            PSI             PSO4            PTI             SO2             SOAALK          SULF            TERP            TOL             UNK             UNR             VOC_INV         XYLMN           '
+        setattr(f2, 'VAR-LIST', strVAR)
+        print(strVAR)
+        
+        for ii in range(0,polid.shape[0]):
+            globals()[polid.ID[ii]] = f2.createVariable(polid.ID[ii], np.float32, ('TSTEP', 'ROW','COL'))
+            globals()[polid.ID[ii]][:,:,:,:] = data[ii,:,:,:]
+            #globals()[polid.ID[ii]].var_desc = polid.ID[ii]+'[1]'
+            globals()[polid.ID[ii]].units = EmisD['Unit']
+            
+
     
-    strVAR = ''
-    polids = [EmisD['tag']]
-    for ids in polids:
-        strVAR = strVAR + ids.ljust(16)
-    #strVAR ='ACET            ACROLEIN        ALD2            ALD2_PRIMARY    ALDX            BENZ            BUTADIENE13     CH4             CH4_INV         CL2             CO              CO2_INV         ETH             ETHA            ETHY            ETOH            FORM            FORM_PRIMARY    HCL             HONO            IOLE            ISOP            KET             MEOH            N2O_INV         NAPH            NH3             NH3_FERT        NO              NO2             NVOL            OLE             PAL             PAR             PCA             PCL             PEC             PFE             PH2O            PK              PMC             PMG             PMN             PMOTHR          PNA             PNCOM           PNH4            PNO3            POC             PRPA            PSI             PSO4            PTI             SO2             SOAALK          SULF            TERP            TOL             UNK             UNR             VOC_INV         XYLMN           '
-    setattr(f2, 'VAR-LIST', strVAR)
-    
-    for ii, pid in enumerate(polids):
-        globals()[pid] = f2.createVariable(pid, np.float32, ('TSTEP', 'ROW','COL'))
-        globals()[pid][:,:,:] = data[:,:,:]
-        globals()[pid].var_desc = pid+'[1]'
-        globals()[pid].units = EmisD['Unit']
+        
+
 
 
    

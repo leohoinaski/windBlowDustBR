@@ -43,19 +43,24 @@ PM10 = {
 }
 
 PM1 = {
-  "Pollutant": "$NO_{2}$",
   "Unit": '$\g.S^{-1}$',
   "tag":'PMULTRAFINE',
   "range":[0,1] # micrometers
 }
 
+ALL = {
+  "Unit": '$\g.S^{-1}$',
+  "tag":'AllFractions',
+  "fractions":['PMFINE','PMC','PM10'] # micrometers
+}
+
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-#wrfoutFolder = rootFolder+'/BR_2019'
-wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+wrfoutFolder = rootFolder+'/BR_2019'
+mcipMETCRO3Dpath =wrfoutFolder+'/METCRO3D_BR_2019.nc'
+#wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+#mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
 domain = 'd01'
-mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
-
 GRDNAM = 'BR_2019'
 RESET_GRID = False
 year = 2021
@@ -112,8 +117,10 @@ for EmisD  in Fractions:
     except:
         print('You do not have the fractions required for PM10')   
         
+FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
+FdustALL = np.stack(FdustALL,axis=0)
+ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,datesTime[lia],mcipMETCRO3Dpath,ALL)
 
-        
 # #%%
 # import matplotlib.pyplot as plt
 # import matplotlib.colors as colors
