@@ -80,6 +80,7 @@ if __name__ == '__main__':
       "Unit": '$\g.S^{-1}$',
       "tag":'AllFractions',
       "fractions":['PMFINE','PMC','PM10'] # micrometers
+      #"fractions":['PMFINE','PMC'] # micrometers
     }
 
 
@@ -139,6 +140,7 @@ if __name__ == '__main__':
             
     
     FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
+    #FdustALL = [FdustFINE,FdustCOARSE]
     FdustALL = np.stack(FdustALL,axis=0)
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,datesTime[lia],mcipMETCRO3Dpath,ALL)
     
