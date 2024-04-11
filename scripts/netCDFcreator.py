@@ -150,10 +150,17 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
         print(strVAR)
         
         for ii in range(0,polid.shape[0]):
+<<<<<<< Updated upstream
             globals()[polid.ID[ii]] = f2.createVariable(polid.ID[ii], np.float32, ('TSTEP', 'LAY', 'ROW','COL'))
             globals()[polid.ID[ii]][:,0,:,:] = data[ii,:,:,:]
             globals()[polid.ID[ii]].var_desc = polid.ID[ii]+'[1]'
             globals()[polid.ID[ii]].units = 'g/s '
+=======
+            globals()[polid.ID[ii]] = f2.createVariable(polid.ID[ii], np.float32, ('TSTEP', 'ROW','COL'))
+            globals()[polid.ID[ii]][:,:,:] = data[ii,:,:,:]
+            #globals()[polid.ID[ii]].var_desc = polid.ID[ii]+'[1]'
+            globals()[polid.ID[ii]].units = EmisD['Unit']
+>>>>>>> Stashed changes
             
 
     
