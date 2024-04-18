@@ -24,6 +24,7 @@ import pandas as pd
 from datetime import timedelta
 import ismember
 import argparse
+import windBlowDustSpeciation as wbds
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -128,8 +129,10 @@ if __name__ == '__main__':
         ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime.iloc[lia,:],mcipMETCRO3Dpath,EmisD)
         if EmisD==PM25:
             FdustFINE = FdustD
+            FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
         elif EmisD==PMC:
             FdustCOARSE = FdustD
+            FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustFINE)
         else:
             print('You have selected an awkward fraction')
         try:
@@ -143,4 +146,7 @@ if __name__ == '__main__':
     #FdustALL = [FdustFINE,FdustCOARSE]
     FdustALL = np.stack(FdustALL,axis=0)
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,datesTime[lia],mcipMETCRO3Dpath,ALL)
+    
+    FdustSpeciated = FdustFINESpec + FdustCOARSEpec
+    ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,'windBlowDust_',FdustSpeciated,datesTime[lia],mcipMETCRO3Dpath)
     
