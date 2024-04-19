@@ -160,7 +160,7 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     return TFLAG
 
 
-def createNETCDFtemporalSpeciated(windBlowDustFolder,folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
+def createNETCDFtemporalSpeciated(windBlowDustFolder,folder,name,data,datesTime,mcipMETCRO3Dpath):
     data[np.isnan(data)]=0
     print('===================STARTING netCDFcreator_v1.py=======================')
     print(data.shape)
@@ -168,7 +168,7 @@ def createNETCDFtemporalSpeciated(windBlowDustFolder,folder,name,data,datesTime,
     #datesTime = datePrepCMAQ(ds)
     print('Initial date: '+str(datesTime.iloc[0,-1]))
     print('Final date: '+str(datesTime.iloc[-1,-1]))
-    f2 = nc.Dataset(folder+'/'+name+EmisD['tag']+'_'+\
+    f2 = nc.Dataset(folder+'/'+name+'Speciated_'+\
                     str(datesTime.iloc[0,-1]).replace(' ','-')+'_'+\
                     str(datesTime.iloc[-1,-1]).replace(' ','-')+\
                     '.nc','w', format='NETCDF3_CLASSIC') #'w' stands for write   
@@ -196,7 +196,7 @@ def createNETCDFtemporalSpeciated(windBlowDustFolder,folder,name,data,datesTime,
     f2.createDimension('VAR', data.shape[1])
     f2.createDimension('ROW', data.shape[2])
     f2.createDimension('COL', data.shape[3])
-    tflag = np.empty([data.shape[1],1,2],dtype='i4')
+    tflag = np.empty([data.shape[0],1,2],dtype='i4')
     for ii in range(0,datesTime.shape[0]):
         tflag[ii,:,0]=int(datesTime['year'].iloc[0]*1000 + datesTime.datetime.iloc[ii].timetuple().tm_yday)
         tflag[ii,:,1]=int(str(datesTime['hour'].iloc[ii])+'0000')
@@ -209,6 +209,7 @@ def createNETCDFtemporalSpeciated(windBlowDustFolder,folder,name,data,datesTime,
     #polids = EmisD['fractions']
     polid = pd.DataFrame()
     spc = pd.read_csv(windBlowDustFolder+'/inputs/tables/weigth_perc_PM_CMAQ.csv')
+    spc = spc[~spc['SPECIES_NAME'].isnull()]
     polid['ID'] = spc['SURR_CMAQ_SPE']
     for ids in polid.ID:
         strVAR = strVAR + ids.ljust(16)

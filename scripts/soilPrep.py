@@ -145,20 +145,20 @@ def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
                 sRef = soilType(inputFolder,lat,lon,D)
                 regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
         else:
-            inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-            outfolder = os.path.dirname(os.getcwd())+'/outputs'
+            # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+            # outfolder = os.path.dirname(os.getcwd())+'/outputs'
             raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
-            x, y = rasterLatLon(domainShp,raster)
+            x, y = rasterLatLon(raster)
             clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
             print('Creating netCDF')
             regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
             sRef = soilType(inputFolder,lat,lon,D)
             regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
     else:
-        inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-        outfolder = os.path.dirname(os.getcwd())+'/outputs'
+        # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+        # outfolder = os.path.dirname(os.getcwd())+'/outputs'
         raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
-        x, y = rasterLatLon(domainShp,raster)
+        x, y = rasterLatLon(raster)
         clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
         print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)

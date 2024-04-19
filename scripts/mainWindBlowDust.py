@@ -23,6 +23,7 @@ import wrf
 import pandas as pd
 from datetime import timedelta
 import ismember
+import windBlowDustSpeciation as wbds
 
 PM25 = {
   "Unit": '$\g.S^{-1}$',
@@ -57,6 +58,7 @@ ALL = {
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 wrfoutFolder = rootFolder+'/BR_2019'
 mcipMETCRO3Dpath =wrfoutFolder+'/METCRO3D_BR_2019.nc'
+windBlowDustFolder = os.path.dirname(os.getcwd())
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
@@ -107,8 +109,10 @@ for EmisD  in Fractions:
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime[lia],mcipMETCRO3Dpath,EmisD)
     if EmisD==PM25:
         FdustFINE = FdustD
+        FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
     elif EmisD==PMC:
         FdustCOARSE = FdustD
+        FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustFINE)
     else:
         print('You have selected an awkward fraction')
     try:
@@ -120,6 +124,8 @@ for EmisD  in Fractions:
 FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
 FdustALL = np.stack(FdustALL,axis=0)
 ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,datesTime[lia],mcipMETCRO3Dpath,ALL)
+FdustSpeciated = FdustFINESpec + FdustCOARSEpec
+ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,'windBlowDust_',FdustSpeciated,datesTime[lia],mcipMETCRO3Dpath)
 
 # #%%
 # import matplotlib.pyplot as plt
