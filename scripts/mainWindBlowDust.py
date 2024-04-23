@@ -65,7 +65,7 @@ windBlowDustFolder = os.path.dirname(os.getcwd())
 domain = 'd01'
 GRDNAM = 'BR_2019'
 RESET_GRID = False
-year = 2021
+year = 2020
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 dx = 0.1
 Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
@@ -74,6 +74,11 @@ Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro.
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GRDNAM
+
+if os.path.isdir(outfolder):
+    print('You have the outputs folder')
+else:
+    os.makedirs(outfolder, exist_ok=True)
 
 ds = nc.Dataset(mcipMETCRO3Dpath)
 datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
