@@ -55,17 +55,18 @@ ALL = {
   "fractions":['PMFINE','PMC','PM10'] # micrometers
 }
 
+domain = 'd01'
+GRDNAM = 'MG_9km'
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder = rootFolder+'/BR_2019'
-mcipMETCRO3Dpath =wrfoutFolder+'/METCRO3D_BR_2019.nc'
+wrfoutFolder = rootFolder+'/MG_9km'
+mcipMETCRO3Dpath =wrfoutFolder+'/METCRO3D_'+GRDNAM+'.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
-domain = 'd01'
-GRDNAM = 'BR_2019'
+
 RESET_GRID = False
-year = 2020
+year = 2021
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 dx = 0.1
 Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
