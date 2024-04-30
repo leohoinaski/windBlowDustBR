@@ -94,6 +94,10 @@ if __name__ == '__main__':
     tablePath = windBlowDustFolder+'/inputs/tables'
     outfolder = windBlowDustFolder+'/Outputs/'+GDNAM
     
+    print('Inputs folder = ' + inputFolder)
+    print('Tables folder = ' + tablePath)
+    print('Outputs folder = ' + outfolder)
+    
     if os.path.isdir(outfolder):
         print('You have the outputs folder')
     else:

@@ -25,6 +25,7 @@ import rioxarray as riox
 #from shapely.geometry import mapping
 import regridMAPBIOMAS as regMap
 import scipy
+from scipy import optimize,stats
 
 def rasterLatLon(raster):
     """
@@ -79,10 +80,12 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
             if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
                 (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
                 matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                matArr[np.array(matArr==raster._FillValue)]=np.nan
                 matRegrid[ii,jj]=np.nanmedian(matArr)
                 print('------------>Contain Clay')
             else:
                 matRegrid[ii,jj]=0
+    matRegrid[np.isnan(matRegrid)] = 0
     return matRegrid
 
 def find_nearest(array, value):
@@ -95,14 +98,14 @@ def soilType(inputFolder,lat,lon,D):
     raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
     x = raster.x.values
     y = raster.y.values
-   
+    raster = raster.rio.reproject("EPSG:4326")
     soilNames=['Sand', 'Silt', 'Clay']
     for kk,soiln in enumerate(soilNames):
         soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
         xs=soilDist['D']*1000
         ys=soilDist['P']
-        f = lambda x,mu,sigma: scipy.stats.norm(mu,sigma).cdf(x)
-        mu,sigma = scipy.optimize.curve_fit(f,xs,ys/100)[0]
+        f = lambda x,mu,sigma: stats.norm(mu,sigma).cdf(x)
+        mu,sigma = optimize.curve_fit(f,xs,ys/100)[0]
         xx = np.arange(0,800,0.01)
         deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
         idx = find_nearest(xx, D)
@@ -125,43 +128,47 @@ def soilType(inputFolder,lat,lon,D):
             if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
                 (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
                 matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                #matArr[np.array(matArr==raster._FillValue)]=np.nan
+                print(np.nanmedian(matArr))
                 sRef[0,ii,jj]=np.nanmedian(matArr)
             else:
                 sRef[0,ii,jj]=np.nan
 
     return sRef
     
-def main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,D,RESET_GRID):
-    if os.path.exists(outfolder+'/regridClay_'+GRDNAM+'.nc'):
+def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
+    if os.path.exists(outfolder+'/regridClay_'+GDNAM+'.nc'):
         if RESET_GRID==False:
-            print ('You already have the regridClay_'+GRDNAM+'.nc file')
-            ds = nc.Dataset(outfolder+'/regridClay_'+GRDNAM+'.nc')
+            print ('You already have the regridClay_'+GDNAM+'.nc file')
+            ds = nc.Dataset(outfolder+'/regridClay_'+GDNAM+'.nc')
             clayRegrid = ds['MAT'][:]
-            if os.path.exists(outfolder+'/sRef_'+GRDNAM+'.nc') :
-                print ('You already have the sRef_'+GRDNAM+'.nc file')
-                ds = nc.Dataset(outfolder+'/sRef_'+GRDNAM+'.nc')
+            if os.path.exists(outfolder+'/sRef_'+GDNAM+'.nc') :
+                print ('You already have the sRef_'+GDNAM+'.nc file')
+                ds = nc.Dataset(outfolder+'/sRef_'+GDNAM+'.nc')
                 sRef = ds['MAT'][:]
             else:
                 sRef = soilType(inputFolder,lat,lon,D)
-                regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
+                regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
         else:
             # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
             # outfolder = os.path.dirname(os.getcwd())+'/outputs'
-            raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+            raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
             x, y = rasterLatLon(raster)
             clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
             print('Creating netCDF')
-            regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
+            regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
             sRef = soilType(inputFolder,lat,lon,D)
-            regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
+            sRef[np.isnan(sRef)] = 0
+            regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
     else:
         # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
         # outfolder = os.path.dirname(os.getcwd())+'/outputs'
-        raster = cutSoil(domainShp,inputFolder,outfolder,GRDNAM)
+        raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
         x, y = rasterLatLon(raster)
         clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
         print('Creating netCDF')
-        regMap.createNETCDF(outfolder,'regridClay_'+GRDNAM,clayRegrid,lon,lat)
+        regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
         sRef = soilType(inputFolder,lat,lon,D)
-        regMap.createNETCDF(outfolder,'sRef_'+GRDNAM,sRef,lon,lat)
+        sRef[np.isnan(sRef)] = 0
+        regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
     return clayRegrid,sRef

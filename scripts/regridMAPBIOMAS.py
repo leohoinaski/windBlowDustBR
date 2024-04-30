@@ -34,7 +34,7 @@ def createDomainShp(wrfoutPath):
     polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
     domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
     return  domainShp,lat,lon
-        
+    
 def cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM):
     with rs.open(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif') as src:
         try:
@@ -67,59 +67,55 @@ def rasterLatLon(outfolder,GRDNAM,inputFolder,year):
     y = raster.y.values
     return x, y
 
-def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder):
-    if type(arr)==rasterio.io.DatasetReader:
-        arr = riox.open_rasterio(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif')
-    lonsIdx = []
-    for i in x:
-        idx = (np.abs(i - lon[0,:])).argmin()
-        lonsIdx.append(idx)
-    latsIdx = []
-    for i in y:
-        idx = (np.abs(i - lat[:,0])).argmin()
-        latsIdx.append(idx)
-      
+def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder): 
+
+    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
+                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
+    
+    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
+                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
+    
+    grids=[]
+    for ii in range(1,lonCorner.shape[0]):
+        #Loop over each cel in y direction
+        for jj in range(1,latCorner.shape[0]):
+            #roadClip=[]
+            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
+            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
+            cel = Polygon(zip(lon_point_list, lat_point_list))
+            grids.append(cel)
+    # x = lon[0,:]
+    # y = lat[:,0]
+    # hlines = [((x1, yi), (x2, yi)) for x1, x2 in zip(x[:-1], x[1:]) for yi in y]
+    # vlines = [((xi, y1), (xi, y2)) for y1, y2 in zip(y[:-1], y[1:]) for xi in x]
+    # from shapely.ops import polygonize
+    # from shapely.geometry import MultiLineString
+    # grids = list(polygonize(MultiLineString(hlines + vlines)))
+    pixelInRaster=[]
     matRegrid=np.empty((len(idSoils),lat.shape[0],lat.shape[1]))
-    pixelsIn=np.empty((lat.shape[0],lat.shape[1]))
-    matRegrid[:,:,:] = np.nan
+    pixelsIn =[] 
     for kk, soilid in enumerate(idSoils):
-        
-        try:
-            matArr = arr.copy()
-            matArr[matArr!=soilid]=0
-            matArr[matArr==soilid]=1
-            #my_rast.where(my_rast != 1, 10)
-            for ii in range(0,lat.shape[0]):
-                for jj in range(lon.shape[1]):
-                    #idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
-                    #print(matArr[idr,idc].sum())
-                    print(str(ii)+' '+str(jj))
-                    matRegrid[kk,ii,jj]= matArr[np.where(np.array(latsIdx)==ii),
-                                                np.where(np.array(lonsIdx)==jj)]
-                    #matRegrid[kk,ii,jj]=matArr[idr,idc].sum()
-                    pixelsIn[ii,jj] = np.size(matArr[np.where(np.array(latsIdx)==ii),
-                                                np.where(np.array(lonsIdx)==jj)])
-                    #pixelsIn[ii,jj] = np.size(matArr[idr,idc])
-        except:
-            #my_rast.where(my_rast != 1, 10)
-            for ii in range(0,lat.shape[0]):
-                # matArr = arr[0,:,:].data
-                # matArr[matArr!=soilid]=0
-                # matArr[matArr==soilid]=1
-                for jj in range(lon.shape[1]):
-                    idr,idc = np.meshgrid(np.where(np.array(latsIdx)==ii),np.where(np.array(lonsIdx)==jj))
-                    #print(matArr[idr,idc].sum())
-                    print(str(ii)+' '+str(jj))
-                    if idc.shape[0]>0:
-                        matArr = arr[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
-                        matArr[matArr!=soilid]=0
-                        matArr[matArr==soilid]=1
-                        matRegrid[kk,ii,jj]=matArr.sum()
-                        if matArr.sum()>0:
+        for i, shape in enumerate(grids):
+            print(str(i) +' from ' + str(len(grids)))
+            with rasterio.open(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif') as src:
+                try:
+                    out_image, out_transform = rasterio.mask.mask(src, [shape], crop=True)
+                    #out_meta = src.meta
+                    out_image = np.array(out_image)
+                    out_image[out_image!=soilid]=0
+                    out_image[out_image==soilid]=1
+                    if out_image.sum()>0:
                             print('------------>Soil in grid')
-                    else:
-                        matRegrid[kk,ii,jj]=0
-                    pixelsIn[ii,jj] = np.size(matArr)
+                    pixelInRaster.append(out_image.sum())
+                    pixelsIn.append(np.size(out_image))
+                except:
+                    print('Pixel outside raster')
+                    pixelInRaster.append(np.nan)
+                    pixelsIn.append(np.nan)
+        matRegrid[kk,:,:] = np.array(pixelInRaster).reshape(lon.shape) 
+        pixelsIn = np.array(pixelsIn).reshape(lon.shape) 
+    
+    matRegrid[np.isnan(matRegrid)]=0
     av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn
     al = np.nansum(matRegrid,axis=0)/pixelsIn
     alarea = matRegrid*30*30
@@ -158,20 +154,20 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     f2.close()
     return f2
     
-def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID): 
-    if os.path.exists(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc'):
+def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID): 
+    if os.path.exists(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc'):
         if RESET_GRID==False:
-            print ('You already have the regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc file')
+            print ('You already have the regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc file')
             domainShp,lat,lon =  createDomainShp(wrfoutPath)
-            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GRDNAM+'.nc')
+            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc')
             #mapbioRegrid = ds['MAT'][0:len(idSoils)-1,:,:]
             al= ds['MAT'][0,:,:] 
             av= ds['MAT'][1,:,:] 
             alarea= ds['MAT'][(len(idSoils)+1):,:,:] 
         else:
             domainShp,lat,lon =  createDomainShp(wrfoutPath)
-            out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-            x, y = rasterLatLon(outfolder,GRDNAM,inputFolder,year)
+            out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GDNAM)
+            x, y = rasterLatLon(outfolder,GDNAM,inputFolder,year)
             mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder)
             matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
             matRegrid2[:,:,:] = np.nan
@@ -180,12 +176,12 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
             matRegrid2[2:(2+alarea.shape[0]),:,:] = alarea
             #name = 'regridMAPBIOMAS_'+GRDNAM
             #data = matRegrid2
-            createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GRDNAM,matRegrid2,lon,lat)
+            createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GDNAM,matRegrid2,lon,lat)
             
     else:
         domainShp,lat,lon =  createDomainShp(wrfoutPath)
-        out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GRDNAM)
-        x, y = rasterLatLon(outfolder,GRDNAM,inputFolder,year)
+        out_meta,arr = cutMapbiomas(domainShp,inputFolder,outfolder,year,GDNAM)
+        x, y = rasterLatLon(outfolder,GDNAM,inputFolder,year)
         mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder)
         matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
         matRegrid2[:,:,:] = np.nan
@@ -194,7 +190,7 @@ def main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
         matRegrid2[2:(2+alarea.shape[0]),:,:] = alarea
         #name = 'regridMAPBIOMAS_'+GRDNAM
         #data = matRegrid2
-        createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GRDNAM,matRegrid2,lon,lat)
+        createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GDNAM,matRegrid2,lon,lat)
     return av,al,alarea,lat,lon,domainShp
 
 

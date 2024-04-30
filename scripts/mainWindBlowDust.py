@@ -56,30 +56,42 @@ ALL = {
 }
 
 domain = 'd01'
-GRDNAM = 'MG_9km'
+GDNAM = 'BR_2019'
+RESET_GRID = False
+year = 2020
+
+
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder = rootFolder+'/MG_9km'
-mcipMETCRO3Dpath =wrfoutFolder+'/METCRO3D_'+GRDNAM+'.nc'
+wrfoutFolder = rootFolder+'/BR_2019'
+#wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+#wrfoutFolder='/home/WRFout/share/Congonhas/2021/d01'
+#mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+#mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
+mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_BR_2019.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
+print(windBlowDustFolder)
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
 
-RESET_GRID = False
-year = 2021
 idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
 dx = 0.1
 Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
                         #Não precisa incluir o PM10 se já tiver PM25 e PM10
 
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+print('Inputs folder = ' + inputFolder)
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
-outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GRDNAM
+print('Tables folder = ' + tablePath)
+outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GDNAM
+print('Outputs folder = ' + outfolder)
+
 
 if os.path.isdir(outfolder):
     print('You have the outputs folder')
 else:
     os.makedirs(outfolder, exist_ok=True)
+
 
 ds = nc.Dataset(mcipMETCRO3Dpath)
 datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
@@ -95,7 +107,7 @@ wrfoutPath = wrfoutFolder+'/'+file[0]
 ds = nc.Dataset(wrfoutPath)
 datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
 lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
-av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GRDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
+av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
 
 for EmisD  in Fractions:
     Dmax = np.max(EmisD['range'])
@@ -105,7 +117,7 @@ for EmisD  in Fractions:
     diamSelect = diam[(Dmin<=diam) & (Dmax>=diam)]
     for jj,diameters in enumerate(diamSelect):
         print(diameters)
-        clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GRDNAM,lat,lon,diameters,RESET_GRID)
+        clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,diameters,RESET_GRID)
         ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(wrfoutPath,tablePath,av,al,diameters,clayRegrid,lia)
         Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,ustarWRF,ustarT,ustarTd)
         RESET_GRID = False
