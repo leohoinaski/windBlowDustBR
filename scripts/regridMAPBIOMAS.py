@@ -95,6 +95,8 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder):
     matRegrid=np.empty((len(idSoils),lat.shape[0],lat.shape[1]))
     pixelsIn =[] 
     for kk, soilid in enumerate(idSoils):
+        pixelsIn =[] 
+        pixelInRaster=[]
         for i, shape in enumerate(grids):
             print(str(i) +' from ' + str(len(grids)))
             with rasterio.open(inputFolder+'/mapbiomas/brasil_coverage_'+str(year)+'.tif') as src:
