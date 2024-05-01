@@ -114,8 +114,8 @@ def rasterInGrid(arr,x,y,lat,lon,idSoils,year,inputFolder):
                     print('Pixel outside raster')
                     pixelInRaster.append(np.nan)
                     pixelsIn.append(np.nan)
-        matRegrid[kk,:,:] = np.array(pixelInRaster).reshape(lon.shape) 
-        pixelsIn = np.array(pixelsIn).reshape(lon.shape) 
+        matRegrid[kk,:,:] = np.array(pixelInRaster).reshape((lon.shape[1],lon.shape[0])).transpose() 
+        pixelsIn = np.array(pixelsIn).reshape((lon.shape[1],lon.shape[0])).transpose() 
     
     matRegrid[np.isnan(matRegrid)]=0
     av = (pixelsIn-np.nansum(matRegrid, axis=0))/pixelsIn

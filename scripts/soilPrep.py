@@ -26,6 +26,9 @@ import rioxarray as riox
 import regridMAPBIOMAS as regMap
 import scipy
 from scipy import optimize,stats
+from shapely.geometry import Polygon
+import rasterio as rs
+import rasterio.mask
 
 def rasterLatLon(raster):
     """
@@ -74,7 +77,7 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
     matRegrid[:,:] = np.nan
     raster = raster.rio.reproject("EPSG:4326")
     for ii in range(0,lat.shape[0]):
-        for jj in range(lon.shape[1]):
+        for jj in range(0,lon.shape[1]):
             #print(matArr[idr,idc].sum())
             print(str(ii)+' '+str(jj))
             if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
@@ -99,6 +102,7 @@ def soilType(inputFolder,lat,lon,D):
     x = raster.x.values
     y = raster.y.values
     raster = raster.rio.reproject("EPSG:4326")
+    rasterOriginal = raster.copy()
     soilNames=['Sand', 'Silt', 'Clay']
     for kk,soiln in enumerate(soilNames):
         soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
@@ -109,30 +113,63 @@ def soilType(inputFolder,lat,lon,D):
         xx = np.arange(0,800,0.01)
         deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
         idx = find_nearest(xx, D)
-        raster.data[raster==kk+1]=deriv[idx]
-    lonsIdx = []
-    for i in x:
-        idx = (np.abs(i - lon[0,:])).argmin()
-        lonsIdx.append(idx)
-    latsIdx = []
-    for i in y:
-        idx = (np.abs(i - lat[:,0])).argmin()
-        latsIdx.append(idx)
+        raster.data[rasterOriginal==kk+1]=deriv[idx]
     
+    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
+                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
+    
+    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
+                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
+    
+    grids=[]
+    for ii in range(1,lonCorner.shape[0]):
+        #Loop over each cel in y direction
+        for jj in range(1,latCorner.shape[0]):
+            #roadClip=[]
+            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
+            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
+            cel = Polygon(zip(lon_point_list, lat_point_list))
+            grids.append(cel)
+    
+    pixelInRaster=[]
     sRef=np.empty((1,lat.shape[0],lat.shape[1]))
     sRef[:,:,:] = np.nan
-    for ii in range(0,lat.shape[0]):
-        for jj in range(lon.shape[1]):
-            #print(matArr[idr,idc].sum())
-            print(str(ii)+' '+str(jj))
-            if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
-                (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
-                matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
-                #matArr[np.array(matArr==raster._FillValue)]=np.nan
-                print(np.nanmedian(matArr))
-                sRef[0,ii,jj]=np.nanmedian(matArr)
-            else:
-                sRef[0,ii,jj]=np.nan
+    for i, shape in enumerate(grids):
+        print(str(i) +' from ' + str(len(grids)))
+        try:
+            clipped = raster.rio.clip([shape])
+            if np.nanmedian(clipped)>0:
+                print('------------>Texture in grid')
+                pixelInRaster.append(np.nanmedian(clipped))
+                
+        except:
+            print('Pixel outside raster')
+            pixelInRaster.append(np.nan)
+
+    sRef[0,:,:] = np.array(pixelInRaster).reshape((lon.shape[1],lon.shape[0])).transpose() 
+    # lonsIdx = []
+    # for i in x:
+    #     idx = (np.abs(i - lon[0,:])).argmin()
+    #     lonsIdx.append(idx)
+    # latsIdx = []
+    # for i in y:
+    #     idx = (np.abs(i - lat[:,0])).argmin()
+    #     latsIdx.append(idx)
+    
+    # sRef=np.empty((1,lat.shape[0],lat.shape[1]))
+    # sRef[:,:,:] = np.nan
+    # for ii in range(0,lat.shape[0]):
+    #     for jj in range(0,lon.shape[1]):
+    #         #print(matArr[idr,idc].sum())
+    #         print(str(ii)+' '+str(jj))
+    #         if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
+    #             (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+    #             matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+    #             #matArr[np.array(matArr==raster._FillValue)]=np.nan
+    #             print(np.nanmedian(matArr))
+    #             sRef[0,ii,jj]=np.nanmedian(matArr)
+    #         else:
+    #             sRef[0,ii,jj]=np.nan
 
     return sRef
     
