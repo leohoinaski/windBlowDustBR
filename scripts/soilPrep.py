@@ -99,8 +99,8 @@ def find_nearest(array, value):
 def soilType(inputFolder,lat,lon,D):
 
     raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
-    x = raster.x.values
-    y = raster.y.values
+    #x = raster.x.values
+    #y = raster.y.values
     raster = raster.rio.reproject("EPSG:4326")
     rasterOriginal = raster.copy()
     soilNames=['Sand', 'Silt', 'Clay']
@@ -140,7 +140,7 @@ def soilType(inputFolder,lat,lon,D):
             clipped = raster.rio.clip([shape])
             if np.nanmedian(clipped)>0:
                 print('------------>Texture in grid')
-                pixelInRaster.append(np.nanmedian(clipped))
+            pixelInRaster.append(np.nanmedian(clipped))
                 
         except:
             print('Pixel outside raster')
