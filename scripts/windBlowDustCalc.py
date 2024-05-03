@@ -78,7 +78,7 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
             Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
             Fdu[ii,np.isnan(ustar.data[ii,:,:])]=np.nan
             Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
-            Fdu[ii,sRef[0,:,:]<=0]=np.nan
+            Fdu[ii,sRef[:,:]<=0]=np.nan
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
     Fdust = np.nansum(Fdust,axis=0)

@@ -96,13 +96,47 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-def soilType(inputFolder,lat,lon,D):
-
+def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
+    x = raster.x.values
+    y = raster.y.values
+    raster = raster.rio.reproject("EPSG:4326")
+    lonsIdx = []
+    for i in x:
+        idx = (np.abs(i - lon[0,:])).argmin()
+        lonsIdx.append(idx)
+    latsIdx = []
+    for i in y:
+        idx = (np.abs(i - lat[:,0])).argmin()
+        latsIdx.append(idx)
+    matRegrid=np.empty((1,lat.shape[0],lat.shape[1]))
+    matRegrid[:,:,:] = 0
+    raster = raster.rio.reproject("EPSG:4326")
+    for ii in range(0,lat.shape[0]):
+        for jj in range(0,lon.shape[1]):
+            #print(matArr[idr,idc].sum())
+            print(str(ii)+' '+str(jj))
+            if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
+                (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+                matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                counts = np.bincount(matArr[~np.isnan(matArr)].astype(int))
+                if len(counts)>0:
+                    matRegrid[0,ii,jj]=np.argmax(counts)
+                    print('------------>Texture type '+str(np.argmax(counts))+' '+str(counts))
+            else:
+                matRegrid[ii,jj]=0
+    matRegrid[np.isnan(matRegrid)] = 0
+    regMap.createNETCDF(outfolder,'regridedSoilTexture_'+GDNAM,matRegrid,lon,lat)
+    return matRegrid
+
+def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
+
+    raster = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc', masked=True)['MAT'][:]
     #x = raster.x.values
     #y = raster.y.values
-    raster = raster.rio.reproject("EPSG:4326")
-    rasterOriginal = raster.copy()
+    #raster = raster.rio.reproject("EPSG:4326")
+    sRef=np.empty((lat.shape[0],lat.shape[1]))
+    sRef[:,:] = 0
     soilNames=['Sand', 'Silt', 'Clay']
     for kk,soiln in enumerate(soilNames):
         soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
@@ -113,40 +147,9 @@ def soilType(inputFolder,lat,lon,D):
         xx = np.arange(0,800,0.01)
         deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
         idx = find_nearest(xx, D)
-        raster.data[rasterOriginal==kk+1]=deriv[idx]
+        sRef[raster[0,:,:].astype(int)==kk+1]=deriv[idx]
     
-    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
-                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
     
-    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
-                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
-    
-    grids=[]
-    for ii in range(1,lonCorner.shape[0]):
-        #Loop over each cel in y direction
-        for jj in range(1,latCorner.shape[0]):
-            #roadClip=[]
-            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
-            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
-            cel = Polygon(zip(lon_point_list, lat_point_list))
-            grids.append(cel)
-    
-    pixelInRaster=[]
-    sRef=np.empty((1,lat.shape[0],lat.shape[1]))
-    sRef[:,:,:] = np.nan
-    for i, shape in enumerate(grids):
-        print(str(i) +' from ' + str(len(grids)))
-        try:
-            clipped = raster.rio.clip([shape])
-            if np.nanmedian(clipped)>0:
-                print('------------>Texture in grid')
-            pixelInRaster.append(np.nanmedian(clipped))
-                
-        except:
-            print('Pixel outside raster')
-            pixelInRaster.append(np.nan)
-
-    sRef[0,:,:] = np.array(pixelInRaster).reshape((lon.shape[1],lon.shape[0])).transpose() 
     # lonsIdx = []
     # for i in x:
     #     idx = (np.abs(i - lon[0,:])).argmin()
@@ -174,29 +177,26 @@ def soilType(inputFolder,lat,lon,D):
     return sRef
     
 def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
-    if os.path.exists(outfolder+'/regridClay_'+GDNAM+'.nc'):
+    if (os.path.exists(outfolder+'/regridClay_'+GDNAM+'.nc')) and (os.path.exists(
+            outfolder+'/regridedSoilTexture_'+GDNAM+'.nc')):
         if RESET_GRID==False:
             print ('You already have the regridClay_'+GDNAM+'.nc file')
             ds = nc.Dataset(outfolder+'/regridClay_'+GDNAM+'.nc')
             clayRegrid = ds['MAT'][:]
-            if os.path.exists(outfolder+'/sRef_'+GDNAM+'.nc') :
-                print ('You already have the sRef_'+GDNAM+'.nc file')
-                ds = nc.Dataset(outfolder+'/sRef_'+GDNAM+'.nc')
-                sRef = ds['MAT'][:]
-            else:
-                sRef = soilType(inputFolder,lat,lon,D)
-                regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
+            print ('You already have the regridedSoilTexture_'+GDNAM+'.nc file')
+            ds = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc')
+            sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
         else:
-            # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-            # outfolder = os.path.dirname(os.getcwd())+'/outputs'
-            raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
-            x, y = rasterLatLon(raster)
-            clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
-            print('Creating netCDF')
-            regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
-            sRef = soilType(inputFolder,lat,lon,D)
-            sRef[np.isnan(sRef)] = 0
-            regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
+          # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+          # outfolder = os.path.dirname(os.getcwd())+'/outputs'
+          raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
+          x, y = rasterLatLon(raster)
+          clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+          print('Creating netCDF')
+          regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
+          regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+          sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
+          sRef[np.isnan(sRef)] = 0  
     else:
         # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
         # outfolder = os.path.dirname(os.getcwd())+'/outputs'
@@ -205,7 +205,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
         clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
         print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
-        sRef = soilType(inputFolder,lat,lon,D)
+        regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+        sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
         sRef[np.isnan(sRef)] = 0
-        regMap.createNETCDF(outfolder,'sRef_'+GDNAM,sRef,lon,lat)
     return clayRegrid,sRef

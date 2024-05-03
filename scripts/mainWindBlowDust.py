@@ -56,18 +56,19 @@ ALL = {
 }
 
 domain = 'd01'
-GDNAM = 'BR_2019'
+GDNAM = 'MG_9km'
 RESET_GRID = False
 year = 2020
 
 
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
-wrfoutFolder = rootFolder+'/BR_2019'
+#wrfoutFolder = rootFolder+'/BR_2019'
+wrfoutFolder = rootFolder+'/MG_9km'
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d01'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
 #mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
-mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_BR_2019.nc'
+mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_'+GDNAM+'.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
 print(windBlowDustFolder)
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
