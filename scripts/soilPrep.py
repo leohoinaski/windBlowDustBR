@@ -124,7 +124,7 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
                     matRegrid[0,ii,jj]=np.argmax(counts)
                     print('------------>Texture type '+str(np.argmax(counts))+' '+str(counts))
             else:
-                matRegrid[ii,jj]=0
+                matRegrid[0,ii,jj]=0
     matRegrid[np.isnan(matRegrid)] = 0
     regMap.createNETCDF(outfolder,'regridedSoilTexture_'+GDNAM,matRegrid,lon,lat)
     return matRegrid

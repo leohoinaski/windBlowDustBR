@@ -55,22 +55,20 @@ ALL = {
   "fractions":['PMFINE','PMC','PM10'] # micrometers
 }
 
-domain = 'd01'
-GDNAM = 'MG_9km'
-RESET_GRID = False
-year = 2020
+domain = 'd02'
+GDNAM = 'MG_3km'
+RESET_GRID = True
+year = 2021
 
 
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder = rootFolder+'/BR_2019'
-wrfoutFolder = rootFolder+'/MG_9km'
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
-#wrfoutFolder='/home/WRFout/share/Congonhas/2021/d01'
-#mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-#mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
-mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_'+GDNAM+'.nc'
+wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
+mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
+#mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_BR_2019.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
-print(windBlowDustFolder)
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
 
@@ -81,12 +79,8 @@ Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro.
                         #Não precisa incluir o PM10 se já tiver PM25 e PM10
 
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-print('Inputs folder = ' + inputFolder)
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
-print('Tables folder = ' + tablePath)
 outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GDNAM
-print('Outputs folder = ' + outfolder)
-
 
 if os.path.isdir(outfolder):
     print('You have the outputs folder')
@@ -96,18 +90,34 @@ else:
 
 ds = nc.Dataset(mcipMETCRO3Dpath)
 datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
+print(datesTimeMCIP.shape)
 # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
 #          'wrfout_'+domain+'_'+str(datesTimeMCIP.year[0]).zfill(4)+'-'+\
 #              str(datesTimeMCIP.month[0]).zfill(2)+'-'+\
 #                  str(datesTimeMCIP.day[0]).zfill(2) in i]
+print('wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
+             str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
+                 str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2))
+
 file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
              str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
-wrfoutPath = wrfoutFolder+'/'+file[0]
-ds = nc.Dataset(wrfoutPath)
+files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
+                 str((datesTimeMCIP.datetime[0]).month).zfill(2)+'-'+\
+                     str((datesTimeMCIP.datetime[0]).day).zfill(2)+'_00:00:00',\
+           'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
+                 str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
+                     str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
+cwd = os.getcwd()
+os.chdir(wrfoutFolder)
+#wrfoutPath = wrfoutFolder+'/'+file[0]
+wrfoutPath = wrfoutFolder+'/'+files[0]
+ds = nc.MFDataset(files)
 datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
+print(datesTime.shape)
 lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
+print(lia.shape)
 av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID)
 
 for EmisD  in Fractions:
@@ -119,12 +129,14 @@ for EmisD  in Fractions:
     for jj,diameters in enumerate(diamSelect):
         print(diameters)
         clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,diameters,RESET_GRID)
-        ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(wrfoutPath,tablePath,av,al,diameters,clayRegrid,lia)
+        ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,diameters,clayRegrid,lia)
         Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,ustarWRF,ustarT,ustarTd)
         RESET_GRID = False
         FdustTotal.append(Fdust)
     FdustTotal = np.stack(FdustTotal)
     FdustD = np.trapz(FdustTotal,dx=dx, axis=0)*1000 # converte para g VERIFICAR!
+    print(FdustD.shape)
+    print(np.nanmax(FdustD))
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,datesTime[lia],mcipMETCRO3Dpath,EmisD)
     if EmisD==PM25:
         FdustFINE = FdustD

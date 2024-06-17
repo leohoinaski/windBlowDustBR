@@ -85,7 +85,7 @@ if __name__ == '__main__':
     }
 
 
-    idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
+    idSoils = [23,30] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. 25 Outras Áreas não Vegetadas
     dx = 0.1 # dx para integração das emissões das frações.
     Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
                             #Não precisa incluir o PM10 se já tiver PM25 e PM10
@@ -93,10 +93,6 @@ if __name__ == '__main__':
     inputFolder = windBlowDustFolder+'/inputs'
     tablePath = windBlowDustFolder+'/inputs/tables'
     outfolder = windBlowDustFolder+'/Outputs/'+GDNAM
-    
-    print('Inputs folder = ' + inputFolder)
-    print('Tables folder = ' + tablePath)
-    print('Outputs folder = ' + outfolder)
     
     if os.path.isdir(outfolder):
         print('You have the outputs folder')
@@ -109,8 +105,18 @@ if __name__ == '__main__':
              'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
                      str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
-    wrfoutPath = wrfoutFolder+'/'+file[0]
-    ds = nc.Dataset(wrfoutPath)
+    files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
+                 str((datesTimeMCIP.datetime[0]).month).zfill(2)+'-'+\
+                     str((datesTimeMCIP.datetime[0]).day).zfill(2)+'_00:00:00',\
+           'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
+                 str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
+                     str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
+    cwd = os.getcwd()
+    os.chdir(wrfoutFolder)
+    #wrfoutPath = wrfoutFolder+'/'+file[0]
+    wrfoutPath = wrfoutFolder+'/'+files[0]
+    ds = nc.MFDataset(files)
+    os.chdir(cwd)
     datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,wrf.ALL_TIMES)))
     lia, loc = ismember.ismember(np.array(datesTime.datetime), np.array(datesTimeMCIP.datetime))
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,outfolder,YEAR,idSoils,RESET_GRID)
@@ -124,7 +130,7 @@ if __name__ == '__main__':
         for jj,diameters in enumerate(diamSelect):
             print(diameters)
             clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,diameters,RESET_GRID)
-            ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(wrfoutPath,tablePath,av,al,diameters,clayRegrid,lia)
+            ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,diameters,clayRegrid,lia)
             Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,ustarWRF,ustarT,ustarTd)
             RESET_GRID = False
             FdustTotal.append(Fdust)

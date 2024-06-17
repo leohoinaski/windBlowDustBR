@@ -28,9 +28,16 @@ def ustarCalc(uz,z0):
 
     """
     k= 0.4 # von karman constant
-    z= 10 # altura de referência
+    z= 10.0 # altura de referência
+    z0[z0<=0]=np.nan
+    print('z0 shape: '+ str(z0.shape))
+    print('uz shape: '+ str(uz.shape))
+    #print('z0 shape: '+ str(z0.shape))
     ustar = k*uz/np.log(z/z0)
     ustar[np.isnan(z0)]=np.nan
+    ustar[z0==0]=np.nan
+    print('ustar shape: '+ str(ustar.shape))
+
     return ustar
 
 def roughness(tablePath,av,al):
@@ -66,11 +73,11 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     fm[:,:,:]=np.nan
     fm=fm.astype(float)
     fm = (1+1.21*(w-wl)**(0.68))**(0.5)
-    fm[w<wl] = 1 
+    fm[w<wl] = 1.0 
     # sigmaV = 1.45
     # mV = 0.16
     # betaV = 202
-    sigmaS = 1
+    sigmaS = 1.0
     mS = 0.5
     betaS = 90
     #fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
@@ -79,9 +86,9 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     ustarT=ustarTd*fm.data*fr
     return ustarT,ustarTd
 
-def main(wrfoutPath,tablePath,av,al,D,clayRegrid,lia):
+def main(ds,tablePath,av,al,D,clayRegrid,lia):
     #tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
-    ds = nc.Dataset(wrfoutPath)
+    #ds = nc.Dataset(wrfoutPath)
     av = ds['VEGFRA'][lia,:,:]/100
     ustarWRF = ds['UST'][lia,:,:]
     z0,alphaV,alphaS = roughness(tablePath,av,al)

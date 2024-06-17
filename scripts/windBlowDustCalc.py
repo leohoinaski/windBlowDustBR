@@ -59,16 +59,29 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     rop = 2.6 # kg/m³ assumi - montar matriz de densidades
     f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo
     roa = 1.227 # kg/m³
-    c = 1
-    Fhd = ((c*roa*(ustar.data**3))/g)*(1-(ustarTd/ustar.data))*((1+(ustarTd/ustar.data))**2)
-    Fhd[ustarT>ustar.data] = 0
+    c = 1.0
+    print('ustar max = ' + str(np.nanmax(ustar)))
+    print(ustar.shape)
+    print(type(ustar))   
+    Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
+    #print('Fhd max = ' + str(np.nanmax(Fhd)))
+    #print(Fhd.shape)
+    Fhd[ustarT>ustar] = 0
     Fhd[Fhd<0] = 0
+    print('Fhd max = ' + str(np.nanmax(Fhd)))
+    print(Fhd.shape)
     Fhtot = Fhd*sRef
+    print('Fhtot max = ' + str(np.nanmax(Fhtot)))
+    print(Fhtot.shape)
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
     Fvtot = alpha*Fhtot
+    print('Fvtot max = ' + str(np.nanmax(Fvtot)))
+    print(Fvtot.shape)
     Fdu = np.empty(Fvtot[:,:,:].shape)
     Fdu[:,:,:] = np.nan
     Fdust = []
+    print('alarea max = ' + str(np.nanmax(alarea)))
+    print(alarea.shape)
     for ii in range(0,alarea.shape[0]):
         for jj in range(0,ustar.shape[0]):
             # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
@@ -76,12 +89,17 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
             Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
             Fdu[ii,alarea[ii,:,:]<=0]=np.nan
             Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
-            Fdu[ii,np.isnan(ustar.data[ii,:,:])]=np.nan
+            Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
             Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
             Fdu[ii,sRef[:,:]<=0]=np.nan
         Fdust.append(Fdu)
     Fdust = np.array(Fdust)
+    print('Fdust max = ' + str(np.nanmax(Fdust)))
+    print(Fdust.shape)
+
     Fdust = np.nansum(Fdust,axis=0)
+    #print('Fdust max = ' + str(np.nanmax(Fdust)))
+    #print(Fdust.shape)
     return Fdust,Fhd,Fhtot,Fvtot
 
 
