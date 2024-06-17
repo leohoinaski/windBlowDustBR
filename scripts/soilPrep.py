@@ -81,15 +81,20 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     # Abrindo arquivo com o teor de argila
     raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
     
+    # Reduzindo a dimensão do raster 1/5
     downscale_factor = 1/5
     
+    # nova largura e altura
     new_width = raster.rio.width * downscale_factor
-    
     new_height = raster.rio.height * downscale_factor
     
+    # faz o downscaling
     raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), int(new_width)), resampling=Resampling.bilinear)
     
-    raster = raster/1000
+    # VERIFICAR!!! conversão da unidade de g/kg para % 
+    # https://angeo.copernicus.org/articles/17/149/1999/angeo-17-149-1999.pdf
+    # equação 4 :https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016MS000823
+    raster = raster/1000 
     
     raster = raster.where(raster>0)
     
