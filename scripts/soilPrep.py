@@ -9,9 +9,13 @@ Inputs : http://geoinfo.cnps.embrapa.br/documents/3295
         https://geoftp.ibge.gov.br/informacoes_ambientais/pedologia/vetores/brasil_5000_mil/
         https://geo.anm.gov.br/portal/apps/webappviewer/index.html?id=6a8f5ccc4b6a4c2bba79759aa952d908
         
+        Vasques, G.M., Coelho, M.R., Dart, R.O., Cintra, L.C., Baca, J.F.M. 
+        (2021). Soil Clay, Silt and Sand Content Maps for Brazil at 0-5, 5-15,
+        15-30, 30-60, 60-100 and 100-200 cm Depth Intervals with 90 m Spatial 
+        Resolution. Version 2021. Embrapa Solos, Rio de Janeiro, Brazil.
+        
 @author: leohoinaski
 """
-
 
 import pandas as pd
 import numpy as np
@@ -21,7 +25,6 @@ import rioxarray as riox
 import regridMAPBIOMAS as regMap
 from scipy import optimize,stats
 from rasterio.enums import Resampling
-
 
 
 def rasterLatLon(raster):
@@ -57,6 +60,9 @@ def rasterLatLon(raster):
 
 def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     """
+    
+    Esta função é utilizada para fazer reduzir a resolução do dado de clay 
+    content. 
     
     Parameters
     ----------
@@ -94,131 +100,347 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     # VERIFICAR!!! conversão da unidade de g/kg para % 
     # https://angeo.copernicus.org/articles/17/149/1999/angeo-17-149-1999.pdf
     # equação 4 :https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016MS000823
-    raster = raster/1000 
+    # dividido por 1000 para transformar g em kg e vezes 100 para colocar em %
+    raster = (raster/1000)*100  
     
+    # remove os valores faltantes iguais a -999
     raster = raster.where(raster>0)
     
     return raster
 
 
-
 def rasterInGrid(domainShp,raster,x,y,lat,lon):
+    """
     
+    Esta função faz o regrid da matriz de clay content para o domínio de 
+    modelagem.
+
+    Parameters
+    ----------
+    domainShp : geodataframe
+        geodataframe com o poligono do dominio de modelagem.
+    raster : rioxarray
+        matriz com os dados do raster clay content.
+    x : np.array
+        matriz de x do raster clay content.
+    y : np.array
+        matriz de y do raster clay content.
+    lat : np.array
+        matriz de latitudes do domínio.
+    lon : np.array
+        matriz de longitudes do domínio.
+
+    Returns
+    -------
+    matRegrid : np.array
+        matriz com o regrid do clay content para o domínio de modelagem.
+
+    """
     
+    # Inicializando matriz de longitudes dentro da cada célula do domínio
     lonsIdx = []
+    
+    # loop para cada valor de longitude do clay content
     for i in x:
+        
+        # indice que possui da celula que possui a longitude do raster
         idx = (np.abs(i - lon[0,:])).argmin()
         lonsIdx.append(idx)
+        
+    # Inicializando matriz de latitudes dentro da cada célula do domínio    
     latsIdx = []
+    
+    # loop para cada valor de longitude do clay content
     for i in y:
+        
+        # indice que possui da celula que possui a latitude do raster
         idx = (np.abs(i - lat[:,0])).argmin()
         latsIdx.append(idx)
+    
+    # Incializando a matriz de regrid do clay content
     matRegrid=np.empty((lat.shape[0],lat.shape[1]))
+    # Todos os valores como nan
     matRegrid[:,:] = np.nan
+    # Definindo o EPSG
     raster = raster.rio.reproject("EPSG:4326")
+    
+    # loop em cada latitude do dominio
     for ii in range(0,lat.shape[0]):
+        
+        # loop em cada longitude do domínio
         for jj in range(0,lon.shape[1]):
+            
             #print(matArr[idr,idc].sum())
+            # acha os indices da matriz do raster que estão dentro da célula do 
+            #domínio
             print(str(ii)+' '+str(jj))
             if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
                 (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+                    
+                # define uma matriz de pixels do raster que estão dentro
+                # da respectiva célula
                 matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                
+                # nan para quando a matriz tiver valores faltantes
                 matArr[np.array(matArr==raster._FillValue)]=np.nan
+               
+                # preenche a nova matriz (dimensão igual ao domínio) com valores
+                # da médiana do clay content na célula
                 matRegrid[ii,jj]=np.nanmedian(matArr)
                 print('------------>Contain Clay')
+            
+            # se não tiver pixels dentro da célula...    
             else:
                 matRegrid[ii,jj]=0
+                
+    # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0
+    
     return matRegrid
 
 def find_nearest(array, value):
+    """
+    Encontra o indice da matriz que possui o valor mais próximo.
+
+    Parameters
+    ----------
+    array : np.array
+        array com matriz de valores.
+    value : float
+        valor para ser encontrado na matriz.
+
+    Returns
+    -------
+    idx : int
+        índice da matriz.
+
+    """
+    # transforma em np.array
     array = np.asarray(array)
+    
+    # Acha o indice
     idx = (np.abs(array - value)).argmin()
+    
     return idx
 
 def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
+    """
+    
+
+    Parameters
+    ----------
+    outfolder : path
+        caminho para a pasta de outputs.
+    inputFolder : path
+        caminho para a pasta de inputs.
+    lat : np.array
+        matriz de latitudes do domínio.
+    lon : np.array
+        matriz de longitudes do domínio.
+    GDNAM : str
+        nome do domínio conforme o MCIP.
+
+    Returns
+    -------
+    matRegrid : np.array
+        matriz com o regrid da textura do solo.
+
+    """
+    
+    # abrindo o raster com a textura do solo
     raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
+    
+    # extraindo matriz de x e y
     x = raster.x.values
     y = raster.y.values
+    
+    # reprojetando
     raster = raster.rio.reproject("EPSG:4326")
+    
+    # inicializando lista que receberá os indices da matriz de celulas do domínio
+    #que possuem um determinado pixel
     lonsIdx = []
+    
+    # loop em cada longitude dos pixels
     for i in x:
+        
+        # determina o índice da matriz de longitudes do domínio que possui o pixel
         idx = (np.abs(i - lon[0,:])).argmin()
         lonsIdx.append(idx)
+        
+    # inicializando lista que receberá os indices da matriz de celulas do domínio
+    #que possuem um determinado pixel    
     latsIdx = []
+    # loop em cada longitude dos pixels
+
     for i in y:
+        
+        # determina o índice da matriz de latitudes do domínio que possui o pixel
         idx = (np.abs(i - lat[:,0])).argmin()
         latsIdx.append(idx)
+    
+    # inicializa a matriz de regrid com a soil texture
     matRegrid=np.empty((1,lat.shape[0],lat.shape[1]))
     matRegrid[:,:,:] = 0
     raster = raster.rio.reproject("EPSG:4326")
+    
+    # loop para cada latitude do domínio
     for ii in range(0,lat.shape[0]):
+        
+        # loop para cada longitude do domínio
         for jj in range(0,lon.shape[1]):
             #print(matArr[idr,idc].sum())
+            
+            # condição para verificar se existe pixel dentro da célula do dominio
             print(str(ii)+' '+str(jj))
             if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
                 (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
+                    
+                # encontrando pixels dentro da célula
                 matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                
+                # conta o número de ocorrências de cada soiltexture
                 counts = np.bincount(matArr[~np.isnan(matArr)].astype(int))
+                
+                # se o tamanho do vetor counts, ou seja, se existir alguma textura
+                # na célula
                 if len(counts)>0:
+                    
+                    # define o valor da matriz de regrid como aquele que mais 
+                    # ocorreu entre as soiltextures
                     matRegrid[0,ii,jj]=np.argmax(counts)
                     print('------------>Texture type '+str(np.argmax(counts))+' '+str(counts))
+            
+            # se não existir textura = 0 
             else:
                 matRegrid[0,ii,jj]=0
+    
+    # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0
+    
+    # escreve o arquivo netCDF com a textura do solo para não precisar fazer 2 vezes
     regMap.createNETCDF(outfolder,'regridedSoilTexture_'+GDNAM,matRegrid,lon,lat)
+    
     return matRegrid
 
-def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
 
+
+def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
+    """
+    função utilizada para determinar a porcentagem de particulas de um determinado
+    diâmetro em cada celula do dominio. 
+    
+    ESTA FUNÇÃO PRECISA SER VERIFICADA 
+
+    Parameters
+    ----------
+    inputFolder : path
+        caminho para a pasta de inputs.
+    outfolder : pat
+        caminho para a pasta de outputs.
+    lat : np.array
+        matriz de lat do dominio.
+    lon : np.array
+        matriz de lon do dominio.
+    D : float
+        diametro da particula.
+    GDNAM : str
+        nome da grade de acordo com o MCIP.
+
+    Returns
+    -------
+    sRef : np.array
+        matriz com os valores da porcentagem de particulas com um determinado 
+        diametro.
+
+    """
+    
+    # abre o raster com o regrid da soiltexture
     raster = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc', masked=True)['MAT'][:]
-    #x = raster.x.values
-    #y = raster.y.values
-    #raster = raster.rio.reproject("EPSG:4326")
+
+    # inicializa a matriz que conterá os valores de porcentagem
     sRef=np.empty((lat.shape[0],lat.shape[1]))
     sRef[:,:] = 0
+    
+    # lista com os tipos de soilTextures
     soilNames=['Sand', 'Silt', 'Clay']
+    
+    # loop para cara soilTextures
     for kk,soiln in enumerate(soilNames):
+        
+        # abre csv com a distribuição de particulas para cada uso do solo
+        # https://www.slideshare.net/slideshow/classificac3a7c3a3o-dossolosaashtosucs/49327763
+        # VERIFICAR
         soilDist = pd.read_csv(inputFolder+'/tables/particleDist/'+soiln+'.csv')
+        
+        # Converte para micrometros os diâmetros
         xs=soilDist['D']*1000
+        
+        # proporção acumulada de particulas em cada diametro
         ys=soilDist['P']
+        
+        # função para fitar a curva de granulometrica acumulada
         f = lambda x,mu,sigma: stats.norm(mu,sigma).cdf(x)
+        
+        # encontrando o mu e sigma da curva
         mu,sigma = optimize.curve_fit(f,xs,ys/100)[0]
+        
+        # valores de diâmetros de 0 a 800 micrometros para usar na funçaõ fitada
         xx = np.arange(0,800,0.01)
+        
+        # derivada da curva acumulada, ou seja, o valor de porcentagem de um 
+        # determinado diametro. 
         deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
+        
+        # indice da matriz que possui o determinado diâmetro
         idx = find_nearest(xx, D)
+        
+        # estabelece o valor de porcentagem para um determinado diametro na matriz
+        # com o mesmo tamanho do dominio
         sRef[raster[0,:,:].astype(int)==kk+1]=deriv[idx]
-    
-    
-    # lonsIdx = []
-    # for i in x:
-    #     idx = (np.abs(i - lon[0,:])).argmin()
-    #     lonsIdx.append(idx)
-    # latsIdx = []
-    # for i in y:
-    #     idx = (np.abs(i - lat[:,0])).argmin()
-    #     latsIdx.append(idx)
-    
-    # sRef=np.empty((1,lat.shape[0],lat.shape[1]))
-    # sRef[:,:,:] = np.nan
-    # for ii in range(0,lat.shape[0]):
-    #     for jj in range(0,lon.shape[1]):
-    #         #print(matArr[idr,idc].sum())
-    #         print(str(ii)+' '+str(jj))
-    #         if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
-    #             (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
-    #             matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
-    #             #matArr[np.array(matArr==raster._FillValue)]=np.nan
-    #             print(np.nanmedian(matArr))
-    #             sRef[0,ii,jj]=np.nanmedian(matArr)
-    #         else:
-    #             sRef[0,ii,jj]=np.nan
 
     return sRef
+
+
     
 def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
+    """
+    Esta função controla a geração de arquivos de solo - claycontent, soiltexture,
+    porcentagem de particulas de um determinado diametro.
+
+    Parameters
+    ----------
+    inputFolder : path
+        DESCRIPTION.
+    outfolder : path
+        DESCRIPTION.
+    domainShp : geodataframe
+        geodataframe com o shape do domínio.
+    GDNAM : str
+        nome da grade de acordo com o MCIP.
+    lat : np.array
+        matriz de latitudes do dominio.
+    lon : np.array
+        matriz de longitudes do dominio.
+    D : float
+        diametro da particula.
+    RESET_GRID : boolean
+        True ou False para resetar a matriz e reescrever o netCDF com o clay content.
+
+    Returns
+    -------
+    clayRegrid : np.array
+        matriz com o clay content.
+    sRef : np.array
+        matriz de porcentagem de particulas com um determinado diâmetro.
+
+    """
+    
+    # se existir o arquivo de regridClay para o domínio
     if (os.path.exists(outfolder+'/regridClay_'+GDNAM+'.nc')) and (os.path.exists(
             outfolder+'/regridedSoilTexture_'+GDNAM+'.nc')):
+        
+        # se não quiser resetar a grade = usa o regrid que já tem
         if RESET_GRID==False:
             print ('You already have the regridClay_'+GDNAM+'.nc file')
             ds = nc.Dataset(outfolder+'/regridClay_'+GDNAM+'.nc')
@@ -226,6 +448,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
             print ('You already have the regridedSoilTexture_'+GDNAM+'.nc file')
             ds = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc')
             sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
+            
         else:
           # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
           # outfolder = os.path.dirname(os.getcwd())+'/outputs'
