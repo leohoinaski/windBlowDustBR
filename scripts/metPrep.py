@@ -3,6 +3,8 @@
 """
 Created on Mon Mar 18 13:04:17 2024
 
+----------------------
+
 @author: leohoinaski
 """
 import numpy as np
@@ -12,7 +14,8 @@ import wrf
 
 def ustarCalc(uz,z0):
     """
-    Esta função calcula a velocidade frictiva
+    Esta função calcula a velocidade frictiva. Não estamos usando esta função
+    pois os resultados não são bons. 
 
     Parameters
     ----------
@@ -20,27 +23,65 @@ def ustarCalc(uz,z0):
         velocidade do vento.
         
     z0 : numpy array
-        rugosidade.
+        rugosidade. 
+        Recebe o dado da função roughness neste mesmo script.
+        
     Returns
     -------
     ustar : numpy array
-        Velocidade frictiva.
+        Velocidade frictiva
 
     """
     k= 0.4 # von karman constant
+    
     z= 10.0 # altura de referência
-    z0[z0<=0]=np.nan
+    
+    z0[z0<=0]=np.nan # Remove os nans 
+    
     print('z0 shape: '+ str(z0.shape))
+    
     print('uz shape: '+ str(uz.shape))
+    
     #print('z0 shape: '+ str(z0.shape))
-    ustar = k*uz/np.log(z/z0)
-    ustar[np.isnan(z0)]=np.nan
-    ustar[z0==0]=np.nan
+    
+    ustar = k*uz/np.log(z/z0) # Equação que estima a friction velocity
+    
+    ustar[np.isnan(z0)]=np.nan # NaN para quando z0 for NaN
+    
+    ustar[z0==0]=np.nan # NaN para quando z0 for 0
+    
     print('ustar shape: '+ str(ustar.shape))
 
     return ustar
 
 def roughness(tablePath,av,al):
+    """
+    
+
+    Parameters
+    ----------
+    tablePath : path
+        Caminho para o arquivo com hs, hv e  alphas de acordo com o artigo 
+        https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016MS000823
+        Table 1. Monthly Vegetation Geometric Height 
+        and Geometric Height and Density of Nonvegetation (Solid) 
+        Elements Based on the Land Type
+        
+    av : numpy array
+        DESCRIPTION.
+    al : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    z0 : TYPE
+        DESCRIPTION.
+    alphaV : TYPE
+        DESCRIPTION.
+    alphaS : TYPE
+        DESCRIPTION.
+
+    """
     alpS = pd.read_csv(tablePath + '/hs.csv')
     hv = pd.read_csv(tablePath + '/hv.csv')
     alphaS = av*alpS['alphaS'][0] + np.nansum(al,axis=0)*alpS['alphaS'][2] 

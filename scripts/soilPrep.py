@@ -12,23 +12,17 @@ Inputs : http://geoinfo.cnps.embrapa.br/documents/3295
 @author: leohoinaski
 """
 
-#import rasterio as rs
-#import rasterio.mask
+
 import pandas as pd
 import numpy as np
 import os
 import netCDF4 as nc
-#import geopandas as gpd
-#from shapely.geometry import Point
-#import nctoolkit as nctools
 import rioxarray as riox
-#from shapely.geometry import mapping
 import regridMAPBIOMAS as regMap
-import scipy
 from scipy import optimize,stats
-from shapely.geometry import Polygon
-import rasterio as rs
-import rasterio.mask
+from rasterio.enums import Resampling
+
+
 
 def rasterLatLon(raster):
     """
@@ -47,24 +41,65 @@ def rasterLatLon(raster):
         values depend on coordinate system.
 
     """
+    
+    # Reprojetando para o EPSG 4326
     raster = raster.rio.reproject("EPSG:4326")
+    
+    # Extraindo matriz de x
     x = raster.x.values
+    
+    # Extraindo matriz de y
     y = raster.y.values
+    
     return x, y
 
+
+
 def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
-    from rasterio.enums import Resampling
-    print('Using original raster')
+    """
+    
+    Parameters
+    ----------
+    domainShp : TYPE
+        DESCRIPTION.
+    inputFolder : TYPE
+        DESCRIPTION.
+    outfolder : TYPE
+        DESCRIPTION.
+    GRDNAM : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    raster : TYPE
+        DESCRIPTION.
+
+    """
+    
+    print('Starting cutSoil function - windBlowDust')
+    
+    # Abrindo arquivo com o teor de argila
     raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
+    
     downscale_factor = 1/5
+    
     new_width = raster.rio.width * downscale_factor
+    
     new_height = raster.rio.height * downscale_factor
+    
     raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), int(new_width)), resampling=Resampling.bilinear)
+    
     raster = raster/1000
+    
     raster = raster.where(raster>0)
+    
     return raster
 
+
+
 def rasterInGrid(domainShp,raster,x,y,lat,lon):
+    
+    
     lonsIdx = []
     for i in x:
         idx = (np.abs(i - lon[0,:])).argmin()
