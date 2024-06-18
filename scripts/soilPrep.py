@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
+
 Created on Tue Mar 19 12:58:58 2024
 
 This class is used to prepare the soil properties for windBlowDuscCalc
@@ -15,6 +17,8 @@ Inputs : http://geoinfo.cnps.embrapa.br/documents/3295
         Resolution. Version 2021. Embrapa Solos, Rio de Janeiro, Brazil.
         
 @author: leohoinaski
+
+
 """
 
 import pandas as pd
@@ -95,7 +99,9 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     new_height = raster.rio.height * downscale_factor
     
     # faz o downscaling
-    raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), int(new_width)), resampling=Resampling.bilinear)
+    raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), 
+                                                         int(new_width)), 
+                                  resampling=Resampling.bilinear)
     
     # VERIFICAR!!! conversão da unidade de g/kg para % 
     # https://angeo.copernicus.org/articles/17/149/1999/angeo-17-149-1999.pdf
@@ -179,7 +185,8 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
                     
                 # define uma matriz de pixels do raster que estão dentro
                 # da respectiva célula
-                matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],
+                                np.where(np.array(lonsIdx)==jj)[0]].data
                 
                 # nan para quando a matriz tiver valores faltantes
                 matArr[np.array(matArr==raster._FillValue)]=np.nan
@@ -248,7 +255,8 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     """
     
     # abrindo o raster com a textura do solo
-    raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif', masked=True).squeeze()
+    raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif',
+                                masked=True).squeeze()
     
     # extraindo matriz de x e y
     x = raster.x.values
@@ -297,7 +305,8 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
                 (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
                     
                 # encontrando pixels dentro da célula
-                matArr = raster[np.where(np.array(latsIdx)==ii)[0],np.where(np.array(lonsIdx)==jj)[0]].data
+                matArr = raster[np.where(np.array(latsIdx)==ii)[0],
+                                np.where(np.array(lonsIdx)==jj)[0]].data
                 
                 # conta o número de ocorrências de cada soiltexture
                 counts = np.bincount(matArr[~np.isnan(matArr)].astype(int))
@@ -356,7 +365,8 @@ def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
     """
     
     # abre o raster com o regrid da soiltexture
-    raster = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc', masked=True)['MAT'][:]
+    raster = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc', 
+                        masked=True)['MAT'][:]
 
     # inicializa a matriz que conterá os valores de porcentagem
     sRef=np.empty((lat.shape[0],lat.shape[1]))
@@ -443,32 +453,63 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
         # se não quiser resetar a grade = usa o regrid que já tem
         if RESET_GRID==False:
             print ('You already have the regridClay_'+GDNAM+'.nc file')
+            
+            # abre o netCDF com o regridClay já feito
             ds = nc.Dataset(outfolder+'/regridClay_'+GDNAM+'.nc')
             clayRegrid = ds['MAT'][:]
+            
+            # abre o arquivo de regridedSoilTexture já feito
             print ('You already have the regridedSoilTexture_'+GDNAM+'.nc file')
             ds = nc.Dataset(outfolder+'/regridedSoilTexture_'+GDNAM+'.nc')
-            sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
             
+            # roda a função de soilType que precisa ser executada 
+            # para cada diâmetro
+            sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
+        
+        # se quiser resetar a grade    
         else:
-          # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-          # outfolder = os.path.dirname(os.getcwd())+'/outputs'
+            
+          # executa a função cutSoil para cortar o arquivo original
           raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
+          
+          # extraindo x e y dos pixels do raster 
           x, y = rasterLatLon(raster)
+          
+          # executa a função para fazer o regrid do clayContent
           clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+          
+          # cria o netCDF com o regrid do clayCOntent
           print('Creating netCDF')
           regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
+          
+          # executa a função para fazer o regrid do soilTexture
           regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+          
+          # executa a função para estimar a porcentagem de particulas na grade
           sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
           sRef[np.isnan(sRef)] = 0  
+    
+    # se não existir o arquivo de regrid      
     else:
-        # inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-        # outfolder = os.path.dirname(os.getcwd())+'/outputs'
+        
+        # executa a função cutSoil para cortar o arquivo original
         raster = cutSoil(domainShp,inputFolder,outfolder,GDNAM)
+        
+        # extraindo x e y dos pixels do raster 
         x, y = rasterLatLon(raster)
+        
+        # executa a função para fazer o regrid do clayContent
         clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+        
+        # cria o netCDF com o regrid do clayCOntent        
         print('Creating netCDF')
         regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
+        
+        # executa a função para fazer o regrid do soilTexture
         regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+        
+        # executa a função para estimar a porcentagem de particulas na grade
         sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
         sRef[np.isnan(sRef)] = 0
+        
     return clayRegrid,sRef
