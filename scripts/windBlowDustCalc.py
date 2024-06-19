@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Esta classe contém as funções para a estimativa do windBlowDust 
+
 Created on Fri Mar 15 15:20:44 2024
 
 @author: leohoinaski
@@ -8,8 +10,15 @@ Created on Fri Mar 15 15:20:44 2024
 
 import numpy as np
 
-def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
+
+
+def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
+    
     """
+    
+    Esta função é utilizada para estimar o fluxo de ressuspensão do solo de 
+    acordo com o artigo https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2016MS000823
+    
     Parameters
     ----------
     avWRF : numpy array 2D
@@ -31,6 +40,7 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
     Fdust : numpy array 3D
         total dust emission in each computational grid cell .
     
+    Fhd,Fhtot,Fvtot = matrizes com fluxos horizontal, total e vertical
     
     References:
         ρb and ρp are the bulk-soil and soil particle density
@@ -50,39 +60,69 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
         #Plastic pressure, p (N/m2)	Sand: 5000 Loam: 10000 Sandy clay loam: 10000 Clay: 30000
         
     """
-    Ca = 0.0006
-    Cb = 1.36
+    
+    # Constantes
+    # https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
+    Ca = 2 
+    Cb = 1.37
     g = 9.81
-    # ===================CUIDADO!!!!
-    p = 10000 #0.5 # asumi - montar matriz de Plastic pressure com base no solo
-    rob = 1.3# kg/m³ - assumi - montar matriz de densidades
-    rop = 2.6 # kg/m³ assumi - montar matriz de densidades
-    f = 0.2 # Assumi - montar matriz de fração de poeira de um determinado diâmetro para cada tipo de solo
-    roa = 1.227 # kg/m³
+    roa = 1227 # kg/m³
     c = 1.0
-    print('ustar max = ' + str(np.nanmax(ustar)))
-    print(ustar.shape)
-    print(type(ustar))   
+    
+    # ===================CUIDADO!!!!
+    # https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
+    p = 10000 # asumi - montar matriz de Plastic pressure com base no solo
+    rob = 1300# kg/m³ - assumi - montar matriz de densidades
+    rop = 2600 # kg/m³ assumi - montar matriz de densidades
+    
+    # Usado para verificação da equação
+    # clayRegrid = 0.1
+    # ustar = np.linspace(0,1.4,100)
+    # sRef = 0.1
+    
+    # foi definido com base na proporção de particulas menores que 20 micro
+    # e teor de argila
+    #https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
+    #https://www.slideshare.net/slideshow/classificac3a7c3a3o-dossolosaashtosucs/49327763      
+    f = 0.8*clayRegrid 
+    
+    # Estimando fluxo horizontal conforme o artigo   
     Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
-    #print('Fhd max = ' + str(np.nanmax(Fhd)))
-    #print(Fhd.shape)
-    Fhd[ustarT>ustar] = 0
+    Fhd[ustarT>ustar] = 0 # condição quando ustar não supera o limite para ressusp
     Fhd[Fhd<0] = 0
     print('Fhd max = ' + str(np.nanmax(Fhd)))
-    print(Fhd.shape)
+    
+    # estimativa do fluxo horizontal total - acredito que esteja em g/ms
     Fhtot = Fhd*sRef
     print('Fhtot max = ' + str(np.nanmax(Fhtot)))
-    print(Fhtot.shape)
+    
+    #  vertical-to-horizontal dust flux ratio
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
+    
+    # cálculo do fvtot - acredito que esteja em g/m²s
     Fvtot = alpha*Fhtot
     print('Fvtot max = ' + str(np.nanmax(Fvtot)))
-    print(Fvtot.shape)
+    
+    # plotagem para verificação da equação
+    # fig,ax = plt.subplots(2)
+    # ax[0].plot(ustar,Fvtot*10**6)
+    # ax[0].set_yscale('log')
+    # ax[1].plot(ustar,Fhtot*10**6)
+    # ax[1].set_yscale('log')
+    
+
+    # calculo da emissão fluxo X area
+    # inicializa a matriz
     Fdu = np.empty(Fvtot[:,:,:].shape)
     Fdu[:,:,:] = np.nan
     Fdust = []
     print('alarea max = ' + str(np.nanmax(alarea)))
     print(alarea.shape)
+    
+    # loop em cada soilID
     for ii in range(0,alarea.shape[0]):
+        
+        # loop em cada hora
         for jj in range(0,ustar.shape[0]):
             # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
             # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
@@ -93,13 +133,17 @@ def wbdFlux(avWRF,alarea,sRef,ustar,ustarT,ustarTd):
             Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
             Fdu[ii,sRef[:,:]<=0]=np.nan
         Fdust.append(Fdu)
+        
+    # transforma para numpy array
     Fdust = np.array(Fdust)
     print('Fdust max = ' + str(np.nanmax(Fdust)))
     print(Fdust.shape)
-
+    
+    # soma as emissões de todos os usos do solo
     Fdust = np.nansum(Fdust,axis=0)
     #print('Fdust max = ' + str(np.nanmax(Fdust)))
     #print(Fdust.shape)
+    
     return Fdust,Fhd,Fhtot,Fvtot
 
 

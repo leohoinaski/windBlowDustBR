@@ -194,11 +194,16 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     g = 9.81 # m/s2
         
     # separando a equação em dois termos
-    t1 = rop*g*(D*10**(-6))
+    t1 = rop*g*(D*10**(-6))/roa
     t2 = tao/(roa*D*10**(-6))
     
     # equação para estimar ustarTd, conforme o artigo
     ustarTd = np.sqrt(An*(t1+t2))
+    
+    # Usar para teste e comparação com artigo
+    #D = np.arange(0.1,1000)
+    # plt.plot(D,ustarTd)
+    # plt.xscale('log')
         
     # calculo da umidade do solo, conforme o artigo
     wl = 0.0014*(clayRegrid**2)+0.17*clayRegrid
@@ -214,34 +219,88 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     fm = (1+1.21*(w-wl)**(0.68))**(0.5)
     fm[w<wl] = 1.0 
     
-    
-    # sigmaV = 1.45
-    # mV = 0.16
-    # betaV = 202
+    # constantes
+    sigmaV = 1.45
+    mV = 0.16
+    betaV = 202
     sigmaS = 1.0
     mS = 0.5
     betaS = 90
     
+    # para teste
+    # av = np.random.rand(1000)
+    # al = 1-av
+    # alphaV = -0.35*np.log(1-av)
+    # tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
+    # alpS = pd.read_csv(tablePath + '/hs.csv')
+    # hv = pd.read_csv(tablePath + '/hv.csv')
+    # alphaS = av*alpS['alphaS'][0] + al*alpS['alphaS'][2] 
+    
     #===========================VERIFICAR!!!
-    #fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
+    fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
     # Referência do fr = https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
-    fr = ((1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5 # ref = )
+    #fr2 = ((1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5 # ref = )
     
     # Estimativa do threshold
-    ustarT=ustarTd*fm.data*fr
+    ustarT=ustarTd*fm*fr
     
     return ustarT,ustarTd
 
 def main(ds,tablePath,av,al,D,clayRegrid,lia):
-    #tablePath = '/mnt/sdb1/windBlowDustBR/inputs/tables'
-    #ds = nc.Dataset(wrfoutPath)
-    av = ds['VEGFRA'][lia,:,:]/100
+    """
+    Esta função controla todo o script de metPrep.
+
+    Parameters
+    ----------
+    ds : netCDF object 
+        objeto com o netCDF do WRF
+    tablePath : path
+        caminho para a pasta com as tabelas do artigo.
+    av : np.array
+        proporção de área vegetada.
+    al : np.array
+        proporção de área de cada soilId.
+    D : int
+        diâmetro da partícula.
+    clayRegrid : np.array
+        matriz com os dados de claycontent.
+    lia : np.array
+        vetor com datas compatíveis entre MCIP e WRF.
+
+    Returns
+    -------
+    ustar : np.array
+        matriz com valores de ustar para cada tempo.
+    ustarT : np.array
+        matriz de ustar threshold.
+    ustarTd : np.array
+        matriz de ustar threshold.
+    av : np.array
+        matriz de proporção de área vegetada do WRF.
+    ustarWRF : np.array
+        matriz de ustar do WRF.
+
+    """
+    
+    # Extraindo dado de fração de vegetação no domínio usado no WRF
+    avWRF = ds['VEGFRA'][lia,:,:]/100
+    
+    # extraindo dados de ustar do WRF
     ustarWRF = ds['UST'][lia,:,:]
-    z0,alphaV,alphaS = roughness(tablePath,av,al)
-    #metPath = '/mnt/sdb1/SC_2019/wrfout_d02_2019-01-01'
+    
+    # estimando rugosidade
+    z0,alphaV,alphaS = roughness(tablePath,avWRF,al)
+    
+    # extraindo velocidade do vento do WRF
     uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,lia,:,:])
+    
+    # calculando ustar de acordo com artigo
     ustar = ustarCalc(uz,z0)
+    
+    # extraindo a umidade do solo do WRF
     w = ds['SMOIS'][lia,0,:,:]
-    #ust = ds['UST'][:]
-    ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av)
-    return ustar,ustarT,ustarTd,av,ustarWRF
+    
+    # estimando ustarT e ustarTd de acordo com o artigo
+    ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF)
+    
+    return ustar,ustarT,ustarTd,avWRF,ustarWRF
