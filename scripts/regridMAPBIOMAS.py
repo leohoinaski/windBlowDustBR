@@ -449,7 +449,7 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
             av= ds['MAT'][1,:,:] 
             
             # o arquivo de alarea tem 3d e a primeira dimensão é o idSoil
-            alarea= ds['MAT'][(len(idSoils)+1):,:,:] 
+            alarea= ds['MAT'][2:,:,:] 
             
         #Se RESET_GRID = True ele reseta a grade mesmo que exista o arquivo
         else:

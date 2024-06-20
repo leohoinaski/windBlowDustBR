@@ -67,21 +67,25 @@ ALL = {
 # Inputs
 domain = 'd02'
 GDNAM = 'MG_3km'
-RESET_GRID = True
+RESET_GRID = False
 year = 2021
 
 
 # Definindo o caminho para as pastas
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
+
 #wrfoutFolder = rootFolder+'/BR_2019'
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
-wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
-mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+#wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
+#mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+mcipPath='/media/leohoinaski/HDD/MG_3km'
+
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
-#mcipMETCRO3Dpath = wrfoutFolder+'/METCRO3D_BR_2019.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
+
 inputFolder = os.path.dirname(os.getcwd())+'/inputs'
 tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
 outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GDNAM
@@ -212,10 +216,12 @@ for EmisD  in Fractions:
     # faz a especiação química das particulas
     if EmisD==PM25:
         FdustFINE = FdustD
+        print('FdustFINE max: '+str(FdustFINE.max()))
         FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
     elif EmisD==PMC:
         FdustCOARSE = FdustD
         FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustFINE)
+        print('FdustCOARSE max: '+str(FdustCOARSE.max()))
     else:
         print('You have selected an awkward fraction')
     
@@ -230,6 +236,7 @@ for EmisD  in Fractions:
 # Acumula todas as estimativas de particulas sem especiação        
 FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
 FdustALL = np.stack(FdustALL,axis=0)
+print('FdustALL max: '+str(FdustALL.max()))
 
 # cria o netCDF com todas as especies de particulas/frações
 ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
@@ -237,6 +244,7 @@ ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
 
 # soma as emissões de cada especie no PM25 e PMC
 FdustSpeciated = FdustFINESpec + FdustCOARSEpec
+print('FdustSpeciated max: '+str(FdustSpeciated.max()))
 
 # cria o netCDF especiado
 ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,

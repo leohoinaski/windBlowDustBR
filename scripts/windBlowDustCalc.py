@@ -84,7 +84,7 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
     # e teor de argila
     #https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
     #https://www.slideshare.net/slideshow/classificac3a7c3a3o-dossolosaashtosucs/49327763      
-    f = 0.8*clayRegrid 
+    f = 0.5*clayRegrid/100 # metade é de particulas com d<2micra
     
     # Estimando fluxo horizontal conforme o artigo   
     Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
