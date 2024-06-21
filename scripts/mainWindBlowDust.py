@@ -76,10 +76,13 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 
 #wrfoutFolder = rootFolder+'/BR_2019'
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
-#wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
-#mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-mcipPath='/media/leohoinaski/HDD/MG_3km'
+wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
+mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+#mcipPath='/media/leohoinaski/HDD/MG_3km'
+#wrfoutFolder='/mnt/sdb1/MG_3km'
+#mcipPath='/mnt/sdb1/MG_3km'
+
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
@@ -254,6 +257,7 @@ ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
 # #%%
 # import matplotlib.pyplot as plt
 # import matplotlib.colors as colors
+# import geopandas as gpd
 # shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
 # borderShape = gpd.read_file(shape_path)
 
@@ -273,12 +277,12 @@ ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
 # ax.set_title('avWRF')
 
 # fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,sRef[0,:, :])
+# ax.pcolor(lon,lat,sRef[:, :])
 # borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 # ax.set_title('sRef')
 
 # fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.log(alarea[0,:, :]))
+# ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
 # borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 # ax.set_title('alarea')
 
@@ -328,3 +332,38 @@ ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
 # ax.scatter(ustarWRF.flatten(),Fhtot.flatten())
 # ax.set_title('Fhtot vs ustar')
 # ax.set_yscale('log')
+
+
+# fig, ax = plt.subplots()
+# pcm = ax.pcolor(lon,lat,np.nansum(FdustFINE[:, :, :], axis=0),norm=colors.LogNorm())
+# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+# ax.set_xticks([])
+# ax.set_yticks([])
+# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+#                         #extend='both', 
+#                         #ticks=bounds,
+#                         #spacing='uniform',
+#                         orientation='horizontal',)
+
+# cbar.ax.set_xlabel('PMFINE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+# ax.set_frame_on(False)
+# cbar.ax.tick_params(labelsize=6) 
+# fig.tight_layout()
+# #ax.set_title('FdustD')
+
+# fig, ax = plt.subplots()
+# pcm = ax.pcolor(lon,lat,np.nansum(FdustCOARSE[:, :, :], axis=0),norm=colors.LogNorm())
+# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+# ax.set_xticks([])
+# ax.set_yticks([])
+# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+#                         #extend='both', 
+#                         #ticks=bounds,
+#                         #spacing='uniform',
+#                         orientation='horizontal',)
+
+# cbar.ax.set_xlabel('FdustCOARSE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+# ax.set_frame_on(False)
+# cbar.ax.tick_params(labelsize=6) 
+# fig.tight_layout()
+# #ax.set_title('FdustD')

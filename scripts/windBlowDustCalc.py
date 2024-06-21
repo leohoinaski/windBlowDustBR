@@ -127,11 +127,11 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
             # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
             # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
             Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
-            Fdu[ii,alarea[ii,:,:]<=0]=np.nan
-            Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
-            Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
-            Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
-            Fdu[ii,sRef[:,:]<=0]=np.nan
+            # Fdu[ii,alarea[ii,:,:]<=0]=np.nan
+            # Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
+            # Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
+            # Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
+            # Fdu[ii,sRef[:,:]<=0]=np.nan
         Fdust.append(Fdu)
         
     # transforma para numpy array
