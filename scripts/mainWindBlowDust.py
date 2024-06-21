@@ -78,10 +78,10 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-mcipPath='/media/leohoinaski/HDD/MG_3km'
-#wrfoutFolder='/mnt/sdb1/MG_3km'
-#mcipPath='/mnt/sdb1/MG_3km'
+#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+#mcipPath='/media/leohoinaski/HDD/MG_3km'
+wrfoutFolder='/mnt/sdb1/MG_3km'
+mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
