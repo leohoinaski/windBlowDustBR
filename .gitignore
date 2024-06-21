@@ -9,6 +9,7 @@ __pycache__/
 inputs
 outputs
 Outputs
+venv3.10
 
 # Distribution / packaging
 .Python

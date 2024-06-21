@@ -12,7 +12,7 @@ import numpy as np
 
 
 
-def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
+def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     
     """
     
@@ -84,24 +84,29 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
     # e teor de argila
     #https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
     #https://www.slideshare.net/slideshow/classificac3a7c3a3o-dossolosaashtosucs/49327763      
-    f = 0.5*clayRegrid/100 # metade é de particulas com d<2micra
+    f = np.array(0.5*clayRegrid/100) # metade é de particulas com d<2micra
     
     # Estimando fluxo horizontal conforme o artigo   
-    Fhd = ((c*roa*(ustar**3))/g)*(1-(ustarTd/ustar))*((1+(ustarTd/ustar))**2)
-    Fhd[ustarT>ustar] = 0 # condição quando ustar não supera o limite para ressusp
+    Fhd = ((c*roa*(ustarWRF**3))/g)*(1-(ustarTd/ustarWRF))*((1+(ustarTd/ustarWRF))**2)
+    Fhd[ustarT>ustarWRF] = 0 # condição quando ustar não supera o limite para ressusp
     Fhd[Fhd<0] = 0
     print('Fhd max = ' + str(np.nanmax(Fhd)))
+    print('Fhd npixels = ' + str(np.nansum(Fhd>0)))
+    print('ustarT<ustarWRF npixels = ' + str(np.nansum(ustarT<ustarWRF)))
     
     # estimativa do fluxo horizontal total - acredito que esteja em g/ms
     Fhtot = Fhd*sRef
     print('Fhtot max = ' + str(np.nanmax(Fhtot)))
+    print('Fhtot npixels = ' + str(np.nansum(Fhtot>0)))
     
     #  vertical-to-horizontal dust flux ratio
-    alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustar*np.sqrt(rop/p))
+    alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustarWRF*np.sqrt(rop/p))
     
     # cálculo do fvtot - acredito que esteja em g/m²s
-    Fvtot = alpha*Fhtot
+    Fvtot = np.array(alpha)*Fhtot
     print('Fvtot max = ' + str(np.nanmax(Fvtot)))
+    print('Fvtot npixels = ' + str(np.nansum(Fvtot>0)))
+    
     
     # plotagem para verificação da equação
     # fig,ax = plt.subplots(2)
@@ -110,23 +115,23 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustar,ustarT,ustarTd):
     # ax[1].plot(ustar,Fhtot*10**6)
     # ax[1].set_yscale('log')
     
-
     # calculo da emissão fluxo X area
     # inicializa a matriz
     Fdu = np.empty(Fvtot[:,:,:].shape)
     Fdu[:,:,:] = np.nan
     Fdust = []
     print('alarea max = ' + str(np.nanmax(alarea)))
+    print('alarea npixels = ' + str(np.nansum(alarea>0)))
     print(alarea.shape)
     
     # loop em cada soilID
     for ii in range(0,alarea.shape[0]):
         
         # loop em cada hora
-        for jj in range(0,ustar.shape[0]):
+        for jj in range(0,ustarWRF.shape[0]):
             # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
             # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
-            Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]
+            Fdu[jj,:,:] = Fvtot[jj,:,:]*np.array(alarea[ii,:,:])
             # Fdu[ii,alarea[ii,:,:]<=0]=np.nan
             # Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
             # Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan

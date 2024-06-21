@@ -54,8 +54,11 @@ def ustarCalc(uz,z0):
     
     z= 10.0 # altura de referência
     
-    z0[z0<=0]=np.nan # Remove os nans 
+    z0[z0<=0]=np.nan # Remove os negativos
     
+    #z0[np.where(z0==0)] = np.nan
+    z0 = np.array(z0)
+
     print('z0 shape: '+ str(z0.shape))
     
     print('uz shape: '+ str(uz.shape))
@@ -64,15 +67,15 @@ def ustarCalc(uz,z0):
     
     ustar = k*uz/np.log(z/z0) # Equação que estima a friction velocity
     
-    ustar[np.isnan(z0)]=np.nan # NaN para quando z0 for NaN
+    #ustar[:,np.isnan(z0)]=np.nan # NaN para quando z0 for NaN
     
-    ustar[z0==0]=np.nan # NaN para quando z0 for 0
+    #ustar[:,z0==0]=np.nan # NaN para quando z0 for 0
     
     print('ustar shape: '+ str(ustar.shape))
 
     return ustar
 
-def roughness(tablePath,av,al):
+def roughness(tablePath,avWRF,):
     """
     
     Esta função é utilizada para calcular a rugosidade da superfície de acordo
@@ -110,23 +113,24 @@ def roughness(tablePath,av,al):
     hv = pd.read_csv(tablePath + '/hv.csv')
     
     # estimando o alphaS com base na proporção de área vegetada e não vegetada
-    alphaS = av*alpS['alphaS'][0] + np.nansum(al,axis=0)*alpS['alphaS'][2] 
+    alphaS = avWRF*alpS['alphaS'][0] + (1-avWRF)*alpS['alphaS'][2] 
     
     # estimando alphaV de acordo com o artigo
-    alphaV = -0.35*np.log(1-av)
+    alphaV = -0.35*np.log(1-avWRF)
     
     # removing inf values 
     alphaV[alphaV == np.inf] = np.nanmax(alphaV)
+    alphaV[alphaV < 0] = np.nanmin(alphaV)
     
     # calculando alpha total
     alpha = alphaS + alphaV
     
     # estimando hs pela ponderação entre area vegetada e não vegetada
-    hS= av*alpS['hs'][0] + al*alpS['hs'][2]
+    hS= avWRF*alpS['hs'][0] + (1-avWRF)*alpS['hs'][2]
     
     # estimando hv pela ponderação entre area vegetada e não vegetada
     # usa a média dos meses 
-    hV = av*hv['mean'][0] + al*hv['mean'][2]
+    hV = avWRF*hv['mean'][0] + (1-avWRF)*hv['mean'][2]
     
     # estimando h conforme artigo
     h = (hV*alphaV + hS*alphaS)/(alphaS + alphaV)
@@ -141,13 +145,13 @@ def roughness(tablePath,av,al):
     z0[alpha>=0.2] = (0.083*alpha[alpha>=0.2]**(-0.46))*h[alpha>=0.2]
     
     # remove nans
-    z0[:,np.isnan(al)]=np.nan
-    alphaV[:,np.isnan(al)]=np.nan
-    alphaS[:,np.isnan(al)]=np.nan
-    
+    # z0[:,np.isnan(al)]=np.nan
+    # alphaV[:,np.isnan(al)]=np.nan
+    # alphaS[:,np.isnan(al)]=np.nan
+    z0 = np.array(z0)
     return z0,alphaV,alphaS
 
-def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
+def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF):
     """
     Esta função calcula o limiar que define quando vai ocorrer a ressuspensão, 
     com base na velocidade frictiva ustarThreshold. 
@@ -206,7 +210,7 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     # plt.xscale('log')
         
     # calculo da umidade do solo, conforme o artigo
-    wl = 0.0014*(clayRegrid**2)+0.17*clayRegrid
+    wl = (0.0014*(clayRegrid**2)+0.17*clayRegrid)/100
     
     # Soil moisture increases the threshold friction velocity through 
     # increasing the cohesive forces suppressing the mobilization of particles.
@@ -216,7 +220,7 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     fm=fm.astype(float)
     
     # estimando conforme o artigo
-    fm = (1+1.21*(w-wl)**(0.68))**(0.5)
+    fm = (1+1.21*((w-wl)**(0.68)))**(0.5)
     fm[w<wl] = 1.0 
     
     # constantes
@@ -235,14 +239,26 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,av):
     # alpS = pd.read_csv(tablePath + '/hs.csv')
     # hv = pd.read_csv(tablePath + '/hv.csv')
     # alphaS = av*alpS['alphaS'][0] + al*alpS['alphaS'][2] 
-    
+    t1 = (1-sigmaV*mV*alphaV)
+    t2 = (1+betaV*mV*alphaV)
+    t3 = (1-sigmaS*mS*(alphaS/(1-avWRF)))
+    t4 = (1+betaS*mS*(alphaS/(1-avWRF)))
+    print(t1.max())
+    print(t2.max())
+    print(t3.max())
+    print(t4.max())
+
     #===========================VERIFICAR!!!
-    fr = ((1-sigmaV*mV*alphaV)*(1+betaV*mV*alphaV)*(1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5
+    fr = (t1*t2*t3*t4)**0.5
+    # print(fr.max())
     # Referência do fr = https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
     #fr2 = ((1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5 # ref = )
     
     # Estimativa do threshold
-    ustarT=ustarTd*fm*fr
+    #ustarT=ustarTd*np.array(fm)*np.array(fr)
+    # considerando apenas a correção pela umidade
+    ustarT=ustarTd*np.array(fm)
+    ustarT = np.array(ustarT)
     
     return ustarT,ustarTd
 
@@ -289,7 +305,7 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
     ustarWRF = ds['UST'][lia,:,:]
     
     # estimando rugosidade
-    z0,alphaV,alphaS = roughness(tablePath,avWRF,al)
+    z0,alphaV,alphaS = roughness(tablePath,avWRF)
     
     # extraindo velocidade do vento do WRF
     uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,lia,:,:])
@@ -302,5 +318,8 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
     
     # estimando ustarT e ustarTd de acordo com o artigo
     ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF)
-    
+    print('ustarT max=' + str(ustarT.max()) )
+    print('ustarT min=' + str(ustarT.min()) )
+    print('ustarTd npixels=' + str(np.nansum(ustarT>0)) )
+    print('ustarTd max=' + str(ustarTd) )
     return ustar,ustarT,ustarTd,avWRF,ustarWRF
