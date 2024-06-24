@@ -29,6 +29,9 @@ import rioxarray as riox
 import regridMAPBIOMAS as regMap
 from scipy import optimize,stats
 from rasterio.enums import Resampling
+from shapely.geometry import Polygon
+import rasterio
+import geopandas as gpd
 
 
 def rasterLatLon(raster):
@@ -258,72 +261,68 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif',
                                 masked=True).squeeze()
     
-    # extraindo matriz de x e y
-    x = raster.x.values
-    y = raster.y.values
+   
+    # # extraindo matriz de x e y
+    # x = raster.x.values
+    # y = raster.y.values
     
-    # reprojetando
-    raster = raster.rio.reproject("EPSG:4326")
+   
+    # Extraindo os cantos das longitudes e latitudes
+    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
+                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
     
-    # inicializando lista que receberá os indices da matriz de celulas do domínio
-    #que possuem um determinado pixel
-    lonsIdx = []
+    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
+                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
     
-    # loop em cada longitude dos pixels
-    for i in x:
+    # Inicializando a grid
+    grids=[]
+    
+    # Loop para cada longitude
+    for ii in range(1,lonCorner.shape[0]):
         
-        # determina o índice da matriz de longitudes do domínio que possui o pixel
-        idx = (np.abs(i - lon[0,:])).argmin()
-        lonsIdx.append(idx)
-        
-    # inicializando lista que receberá os indices da matriz de celulas do domínio
-    #que possuem um determinado pixel    
-    latsIdx = []
-    # loop em cada longitude dos pixels
+        #Loop over each cel in y direction
+        for jj in range(1,latCorner.shape[0]):
+            
+            #Criando retângulo de de cada célula
+            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
+            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
+            
+            # Criando um polígono para cada celula
+            cel = Polygon(zip(lon_point_list, lat_point_list))
+            grids.append(cel)
+            
+    
+    
+    # import geopandas as gpd
+    # import matplotlib.pyplot as plt
+    shapeSolos = gpd.read_file(inputFolder+'/Solos_5000mil/Solos_5000.shp')
+    shapeSolos = shapeSolos.set_crs('epsg:4326')
+    df = pd.DataFrame({'geometry':grids})
+    gdf = gpd.GeoDataFrame(df, crs="EPSG:4326")
+    gdf.set_geometry('geometry', inplace=True)
+    gdf.boundary.plot()
+    
+    soilIdx=[]
+    for index, row in gdf.iterrows():
+        clipped = gpd.clip(shapeSolos, row.geometry)
+        if clipped['DSC_TEXTUR'].iloc[0] == 'argilosa  ou muito argilosa':
+            soilIdx.append(3)
+        elif clipped['DSC_TEXTUR'].iloc[0] == 'media':
+            soilIdx.append(2)
+        elif clipped['DSC_TEXTUR'].iloc[0] == 'arenosa':
+            soilIdx.append(1)
+            
+        else:
+            soilIdx.append(np.nan)
+    
+    # # Inicializando a matriz de pixels de cada idSoil no domínio
+    matRegrid = np.empty((lat.shape[0], lat.shape[1]))
+    
+    matRegrid[:,:] = np.array(soilIdx).reshape((lon.shape[1],lon.shape[0])).transpose() 
+    
+    #plt.pcolor(matRegrid)
+    #np.unique(matRegrid)
 
-    for i in y:
-        
-        # determina o índice da matriz de latitudes do domínio que possui o pixel
-        idx = (np.abs(i - lat[:,0])).argmin()
-        latsIdx.append(idx)
-    
-    # inicializa a matriz de regrid com a soil texture
-    matRegrid=np.empty((1,lat.shape[0],lat.shape[1]))
-    matRegrid[:,:,:] = 0
-    raster = raster.rio.reproject("EPSG:4326")
-    
-    # loop para cada latitude do domínio
-    for ii in range(0,lat.shape[0]):
-        
-        # loop para cada longitude do domínio
-        for jj in range(0,lon.shape[1]):
-            #print(matArr[idr,idc].sum())
-            
-            # condição para verificar se existe pixel dentro da célula do dominio
-            print(str(ii)+' '+str(jj))
-            if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
-                (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
-                    
-                # encontrando pixels dentro da célula
-                matArr = raster[np.where(np.array(latsIdx)==ii)[0],
-                                np.where(np.array(lonsIdx)==jj)[0]].data
-                
-                # conta o número de ocorrências de cada soiltexture
-                counts = np.bincount(matArr[~np.isnan(matArr)].astype(int))
-                
-                # se o tamanho do vetor counts, ou seja, se existir alguma textura
-                # na célula
-                if len(counts)>0:
-                    
-                    # define o valor da matriz de regrid como aquele que mais 
-                    # ocorreu entre as soiltextures
-                    matRegrid[0,ii,jj]=np.argmax(counts)
-                    print('------------>Texture type '+str(np.argmax(counts))+' '+str(counts))
-            
-            # se não existir textura = 0 
-            else:
-                matRegrid[0,ii,jj]=0
-    
     # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0
     

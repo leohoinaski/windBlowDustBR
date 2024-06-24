@@ -108,9 +108,13 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     print('Fvtot npixels = ' + str(np.nansum(Fvtot>0)))
     
     
-    # plotagem para verificação da equação
+    # # plotagem para verificação da equação
     # fig,ax = plt.subplots(2)
-    # ax[0].plot(ustar,Fvtot*10**6)
+    # ax[0].scatter(ustar[13,:,:],Fvtot[13,:,:]*10**6)
+    
+    # ax[1].scatter(np.nansum(alarea[:,:],axis=0),Fvtot[13,:,:]*10**6)
+    
+    
     # ax[0].set_yscale('log')
     # ax[1].plot(ustar,Fhtot*10**6)
     # ax[1].set_yscale('log')

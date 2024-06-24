@@ -254,116 +254,116 @@ ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
                                        'windBlowDust_',FdustSpeciated,
                                        datesTime[lia],mcipMETCRO3Dpath)
 
-# #%%
-# import matplotlib.pyplot as plt
-# import matplotlib.colors as colors
-# import geopandas as gpd
-# shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
-# borderShape = gpd.read_file(shape_path)
+#%%
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import geopandas as gpd
+shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
+borderShape = gpd.read_file(shape_path)
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :].data,axis=0))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('ustar')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :].data,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('ustar')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat, np.nanmean(ustarWRF[:, :, :].data,axis=0))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('ustarWRF')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat, np.nanmean(ustarWRF[:, :, :].data,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('ustarWRF')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.nansum(avWRF,axis=0))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('avWRF')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nansum(avWRF,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('avWRF')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,sRef[:, :])
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('sRef')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,sRef[:, :])
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('sRef')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('alarea')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('alarea')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('clayRegrid')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('clayRegrid')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('Fvtot')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('Fvtot')
 
-# fig, ax = plt.subplots()
-# ax.pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_title('Fhtot')
+fig, ax = plt.subplots()
+ax.pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_title('Fhtot')
 
-# fig, ax = plt.subplots()
-# pcm = ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0),norm=colors.LogNorm())
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_xticks([])
-# ax.set_yticks([])
-# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
-#                         #extend='both', 
-#                         #ticks=bounds,
-#                         #spacing='uniform',
-#                         orientation='horizontal',)
+fig, ax = plt.subplots()
+pcm = ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0),norm=colors.LogNorm())
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
-# cbar.ax.set_xlabel(EmisD['tag']+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
-# ax.set_frame_on(False)
-# cbar.ax.tick_params(labelsize=6) 
-# fig.tight_layout()
-# #ax.set_title('FdustD')
+cbar.ax.set_xlabel(EmisD['tag']+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+ax.set_frame_on(False)
+cbar.ax.tick_params(labelsize=6) 
+fig.tight_layout()
+#ax.set_title('FdustD')
 
-# fig, ax = plt.subplots()
-# ax.scatter(ustarWRF.flatten(),FdustD.flatten())
-# ax.set_title('FdustD vs ustar')
-# ax.set_yscale('log')
+fig, ax = plt.subplots()
+ax.scatter(ustarWRF.flatten(),FdustD.flatten())
+ax.set_title('FdustD vs ustar')
+ax.set_yscale('log')
 
-# fig, ax = plt.subplots()
-# ax.scatter(ustarWRF.flatten(),Fvtot.flatten())
-# ax.set_title('Fvtot vs ustar')
-# ax.set_yscale('log')
+fig, ax = plt.subplots()
+ax.scatter(ustarWRF.flatten(),Fvtot.flatten())
+ax.set_title('Fvtot vs ustar')
+ax.set_yscale('log')
 
-# fig, ax = plt.subplots()
-# ax.scatter(ustarWRF.flatten(),Fhtot.flatten())
-# ax.set_title('Fhtot vs ustar')
-# ax.set_yscale('log')
+fig, ax = plt.subplots()
+ax.scatter(ustarWRF.flatten(),Fhtot.flatten())
+ax.set_title('Fhtot vs ustar')
+ax.set_yscale('log')
 
 
-# fig, ax = plt.subplots()
-# pcm = ax.pcolor(lon,lat,np.nansum(FdustFINE[:, :, :], axis=0),norm=colors.LogNorm())
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_xticks([])
-# ax.set_yticks([])
-# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
-#                         #extend='both', 
-#                         #ticks=bounds,
-#                         #spacing='uniform',
-#                         orientation='horizontal',)
+fig, ax = plt.subplots()
+pcm = ax.pcolor(lon,lat,np.nansum(FdustFINE[:, :, :], axis=0),norm=colors.LogNorm())
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
-# cbar.ax.set_xlabel('PMFINE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
-# ax.set_frame_on(False)
-# cbar.ax.tick_params(labelsize=6) 
-# fig.tight_layout()
-# #ax.set_title('FdustD')
+cbar.ax.set_xlabel('PMFINE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+ax.set_frame_on(False)
+cbar.ax.tick_params(labelsize=6) 
+fig.tight_layout()
+#ax.set_title('FdustD')
 
-# fig, ax = plt.subplots()
-# pcm = ax.pcolor(lon,lat,np.nansum(FdustCOARSE[:, :, :], axis=0),norm=colors.LogNorm())
-# borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
-# ax.set_xticks([])
-# ax.set_yticks([])
-# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
-#                         #extend='both', 
-#                         #ticks=bounds,
-#                         #spacing='uniform',
-#                         orientation='horizontal',)
+fig, ax = plt.subplots()
+pcm = ax.pcolor(lon,lat,np.nanmax(FdustCOARSE[:, :, :], axis=0),norm=colors.LogNorm())
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
-# cbar.ax.set_xlabel('FdustCOARSE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
-# ax.set_frame_on(False)
-# cbar.ax.tick_params(labelsize=6) 
-# fig.tight_layout()
-# #ax.set_title('FdustD')
+cbar.ax.set_xlabel('FdustCOARSE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+ax.set_frame_on(False)
+cbar.ax.tick_params(labelsize=6) 
+fig.tight_layout()
+#ax.set_title('FdustD')
