@@ -95,14 +95,14 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     print('ustarT<ustarWRF npixels = ' + str(np.nansum(ustarT<ustarWRF)))
     
     # estimativa do fluxo horizontal total - acredito que esteja em g/ms
-    Fhtot = Fhd*sRef
+    Fhtot = Fhd*sRef*10**6 # transforma para microgramas
     print('Fhtot max = ' + str(np.nanmax(Fhtot)))
     print('Fhtot npixels = ' + str(np.nansum(Fhtot>0)))
     
     #  vertical-to-horizontal dust flux ratio
     alpha = (Ca*g*f*rob/(2*p))*(0.24+Cb*ustarWRF*np.sqrt(rop/p))
     
-    # cálculo do fvtot - acredito que esteja em g/m²s
+    # cálculo do fvtot - acredito que esteja em ug/m²s
     Fvtot = np.array(alpha)*Fhtot
     print('Fvtot max = ' + str(np.nanmax(Fvtot)))
     print('Fvtot npixels = ' + str(np.nansum(Fvtot>0)))
@@ -128,28 +128,31 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     print('alarea npixels = ' + str(np.nansum(alarea>0)))
     print(alarea.shape)
     
-    # loop em cada soilID
-    for ii in range(0,alarea.shape[0]):
+    
+    # # loop em cada soilID
+    # for ii in range(0,alarea.shape[0]):
         
-        # loop em cada hora
-        for jj in range(0,ustarWRF.shape[0]):
-            # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
-            # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
-            Fdu[jj,:,:] = Fvtot[jj,:,:]*np.array(alarea[ii,:,:])
-            # Fdu[ii,alarea[ii,:,:]<=0]=np.nan
-            # Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
-            # Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
-            # Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
-            # Fdu[ii,sRef[:,:]<=0]=np.nan
-        Fdust.append(Fdu)
-        
+    #     # loop em cada hora
+    #     for jj in range(0,ustarWRF.shape[0]):
+    #         # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
+    #         # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
+    #         Fdu[jj,:,:] = Fvtot[jj,:,:]*np.array(alarea[ii,:,:])
+    #         # Fdu[ii,alarea[ii,:,:]<=0]=np.nan
+    #         # Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
+    #         # Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
+    #         # Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
+    #         # Fdu[ii,sRef[:,:]<=0]=np.nan
+    #     Fdust.append(Fdu)
+    
+    alareaSum = np.nansum(alarea,axis=0)
+    Fdust = alareaSum.repeat(Fvtot.shape[0]).reshape(Fvtot.shape)*Fvtot
     # transforma para numpy array
-    Fdust = np.array(Fdust)
+    Fdust = np.array(Fdust)/(10**6) # para gramas por segundo
     print('Fdust max = ' + str(np.nanmax(Fdust)))
     print(Fdust.shape)
     
     # soma as emissões de todos os usos do solo
-    Fdust = np.nansum(Fdust,axis=0)
+    #Fdust = np.nansum(Fdust,axis=0)
     #print('Fdust max = ' + str(np.nanmax(Fdust)))
     #print(Fdust.shape)
     

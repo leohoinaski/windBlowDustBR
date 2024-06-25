@@ -257,16 +257,7 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
 
     """
     
-    # abrindo o raster com a textura do solo
-    raster = riox.open_rasterio(inputFolder+'/Solos_5000mil/SolosTextureRaster.tif',
-                                masked=True).squeeze()
-    
-   
-    # # extraindo matriz de x e y
-    # x = raster.x.values
-    # y = raster.y.values
-    
-   
+  
     # Extraindo os cantos das longitudes e latitudes
     lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
                           lon[0,-1]+np.diff(lon[0,-3:-1])/2)
@@ -293,15 +284,15 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
             
     
     
-    # import geopandas as gpd
-    # import matplotlib.pyplot as plt
+
+    # Abrindo shapefile com a textura do solo
     shapeSolos = gpd.read_file(inputFolder+'/Solos_5000mil/Solos_5000.shp')
     shapeSolos = shapeSolos.set_crs('epsg:4326')
     df = pd.DataFrame({'geometry':grids})
     gdf = gpd.GeoDataFrame(df, crs="EPSG:4326")
     gdf.set_geometry('geometry', inplace=True)
-    gdf.boundary.plot()
-    
+ 
+    # Recortando o tipo de solo para cada célula do domínio.
     soilIdx=[]
     for index, row in gdf.iterrows():
         clipped = gpd.clip(shapeSolos, row.geometry)
@@ -318,10 +309,8 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     # # Inicializando a matriz de pixels de cada idSoil no domínio
     matRegrid = np.empty((lat.shape[0], lat.shape[1]))
     
+    # fazendo o rashape
     matRegrid[:,:] = np.array(soilIdx).reshape((lon.shape[1],lon.shape[0])).transpose() 
-    
-    #plt.pcolor(matRegrid)
-    #np.unique(matRegrid)
 
     # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0

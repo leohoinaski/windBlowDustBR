@@ -78,10 +78,10 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-#mcipPath='/media/leohoinaski/HDD/MG_3km'
-wrfoutFolder='/mnt/sdb1/MG_3km'
-mcipPath='/mnt/sdb1/MG_3km'
+wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+mcipPath='/media/leohoinaski/HDD/MG_3km'
+#wrfoutFolder='/mnt/sdb1/MG_3km'
+#mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
@@ -261,45 +261,137 @@ import geopandas as gpd
 shape_path= rootFolder+'/shapefiles/BR_regions.shp'   
 borderShape = gpd.read_file(shape_path)
 
+# ustar no espaço
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :].data,axis=0))
+pcm= ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :].data,axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('ustar')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
+
+
+# ustarWRF no espaço
 fig, ax = plt.subplots()
 ax.pcolor(lon,lat, np.nanmean(ustarWRF[:, :, :].data,axis=0))
-borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+pcm = borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('ustarWRF')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm,ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
+
+# avWRF no espaço
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.nansum(avWRF,axis=0))
+pcm = ax.pcolor(lon,lat,np.nansum(avWRF,axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('avWRF')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,sRef[:, :])
+pcm = ax.pcolor(lon,lat,sRef[:, :])
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('sRef')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
+pcm = ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('alarea')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+#ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
+pcm = ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('clayRegrid')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+#ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+
+
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
+pcm = ax.pcolor(lon,lat,np.nanmean(Fvtot,axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('Fvtot')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+#ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+
 
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
+pcm = ax.pcolor(lon,lat,np.nanmean(Fhtot,axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('Fhtot')
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+#ax.set_frame_on(False)
+ax.set_xticks([])
+ax.set_yticks([])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+
 
 fig, ax = plt.subplots()
 pcm = ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0),norm=colors.LogNorm())
@@ -311,7 +403,6 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
                         #ticks=bounds,
                         #spacing='uniform',
                         orientation='horizontal',)
-
 cbar.ax.set_xlabel(EmisD['tag']+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
 ax.set_frame_on(False)
 cbar.ax.tick_params(labelsize=6) 
@@ -322,15 +413,24 @@ fig, ax = plt.subplots()
 ax.scatter(ustarWRF.flatten(),FdustD.flatten())
 ax.set_title('FdustD vs ustar')
 ax.set_yscale('log')
+#https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
+
 
 fig, ax = plt.subplots()
 ax.scatter(ustarWRF.flatten(),Fvtot.flatten())
 ax.set_title('Fvtot vs ustar')
 ax.set_yscale('log')
+#https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
 
 fig, ax = plt.subplots()
 ax.scatter(ustarWRF.flatten(),Fhtot.flatten())
 ax.set_title('Fhtot vs ustar')
+ax.set_yscale('log')
+
+
+fig, ax = plt.subplots()
+ax.scatter(alarea[1,:,:].repeat(Fvtot.shape[0]).flatten(),Fvtot.flatten())
+ax.set_title('Fvtot vs alarea')
 ax.set_yscale('log')
 
 
