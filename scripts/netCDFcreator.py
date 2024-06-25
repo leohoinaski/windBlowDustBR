@@ -117,7 +117,7 @@ def createNETCDFtemporal(folder,name,data,datesTime,mcipMETCRO3Dpath,EmisD):
     data = np.array(data)
     data[np.isnan(data)]=0.0
     print('===================STARTING netCDFcreator_v1.py=======================')
-    print(data.shape)
+    #print(data.shape)
     ds = nc.Dataset(mcipMETCRO3Dpath)  
     #datesTime = datePrepCMAQ(ds)
     print('Initial date: '+str(datesTime.iloc[0,-1]))

@@ -430,6 +430,7 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
         geodataframe com o shape do domínio de modelagem.
 
     """
+    print('=====STARTING regridMAPBIOMAS.py=====' )
     
     # Verifica se o arquivo já existe 
     if os.path.exists(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc'):

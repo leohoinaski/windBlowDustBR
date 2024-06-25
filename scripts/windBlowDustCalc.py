@@ -60,6 +60,7 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
         #Plastic pressure, p (N/m2)	Sand: 5000 Loam: 10000 Sandy clay loam: 10000 Clay: 30000
         
     """
+    print('=====STARTING windBlowDustCalc.py=====' )
     
     # Constantes
     # https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
@@ -111,10 +112,7 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     # # plotagem para verificação da equação
     # fig,ax = plt.subplots(2)
     # ax[0].scatter(ustar[13,:,:],Fvtot[13,:,:]*10**6)
-    
     # ax[1].scatter(np.nansum(alarea[:,:],axis=0),Fvtot[13,:,:]*10**6)
-    
-    
     # ax[0].set_yscale('log')
     # ax[1].plot(ustar,Fhtot*10**6)
     # ax[1].set_yscale('log')
@@ -123,33 +121,21 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     # inicializa a matriz
     Fdu = np.empty(Fvtot[:,:,:].shape)
     Fdu[:,:,:] = np.nan
-    Fdust = []
+    #Fdust = []
     print('alarea max = ' + str(np.nanmax(alarea)))
     print('alarea npixels = ' + str(np.nansum(alarea>0)))
     print(alarea.shape)
     
-    
-    # # loop em cada soilID
-    # for ii in range(0,alarea.shape[0]):
-        
-    #     # loop em cada hora
-    #     for jj in range(0,ustarWRF.shape[0]):
-    #         # Adaptei a equação do artigo pois o Mapbiomas nos fornece a área e não fraçao da área.
-    #         # Fdu[jj,:,:] = Fvtot[jj,:,:]*alarea[ii,:,:]*(1-avWRF[ii,:,:])
-    #         Fdu[jj,:,:] = Fvtot[jj,:,:]*np.array(alarea[ii,:,:])
-    #         # Fdu[ii,alarea[ii,:,:]<=0]=np.nan
-    #         # Fdu[ii,np.isnan(alarea[ii,:,:])]=np.nan
-    #         # Fdu[ii,np.isnan(ustar[ii,:,:])]=np.nan
-    #         # Fdu[ii,Fvtot[jj,:,:]<=0]=np.nan
-    #         # Fdu[ii,sRef[:,:]<=0]=np.nan
-    #     Fdust.append(Fdu)
-    
     alareaSum = np.nansum(alarea,axis=0)
-    Fdust = alareaSum.repeat(Fvtot.shape[0]).reshape(Fvtot.shape)*Fvtot
+    #     # loop em cada hora
+    for jj in range(0,ustarWRF.shape[0]):
+        Fdu[jj,:,:] = Fvtot[jj,:,:]*alareaSum
+
+    #Fdust = alareaSum.repeat(Fvtot.shape[0]).reshape(Fvtot.shape)*Fvtot
     # transforma para numpy array
-    Fdust = np.array(Fdust)/(10**6) # para gramas por segundo
+    Fdust = np.array(Fdu)/(10**6) # para gramas por segundo
     print('Fdust max = ' + str(np.nanmax(Fdust)))
-    print(Fdust.shape)
+    # print(Fdust.shape)
     
     # soma as emissões de todos os usos do solo
     #Fdust = np.nansum(Fdust,axis=0)

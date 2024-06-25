@@ -89,7 +89,7 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
 
     """
     
-    print('Starting cutSoil function - windBlowDust')
+   # print('Starting cutSoil function - windBlowDust')
     
     # Abrindo arquivo com o teor de argila
     raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
@@ -433,6 +433,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
         matriz de porcentagem de particulas com um determinado diâmetro.
 
     """
+    print('=====STARTING soilPrep.py=====' )
     
     # se existir o arquivo de regridClay para o domínio
     if (os.path.exists(outfolder+'/regridClay_'+GDNAM+'.nc')) and (os.path.exists(

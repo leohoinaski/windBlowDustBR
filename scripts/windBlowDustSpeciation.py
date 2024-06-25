@@ -36,7 +36,7 @@ def speciate(windBlowDustFolder,FdustD):
         matriz com as emissões especiadas.
 
     """
-    
+    print('=====STARTING windBlowDustSpeciation.py=====' )
     # abrindo csv com os perfis de especiação 
     spc = pd.read_csv(windBlowDustFolder+'/inputs/tables/weigth_perc_PM_CMAQ.csv')
     

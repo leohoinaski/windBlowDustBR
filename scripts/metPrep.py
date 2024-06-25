@@ -59,9 +59,9 @@ def ustarCalc(uz,z0):
     #z0[np.where(z0==0)] = np.nan
     z0 = np.array(z0)
 
-    print('z0 shape: '+ str(z0.shape))
+    #print('z0 shape: '+ str(z0.shape))
     
-    print('uz shape: '+ str(uz.shape))
+    #print('uz shape: '+ str(uz.shape))
     
     #print('z0 shape: '+ str(z0.shape))
     
@@ -71,7 +71,7 @@ def ustarCalc(uz,z0):
     
     #ustar[:,z0==0]=np.nan # NaN para quando z0 for 0
     
-    print('ustar shape: '+ str(ustar.shape))
+    #print('ustar shape: '+ str(ustar.shape))
 
     return ustar
 
@@ -243,10 +243,10 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF):
     t2 = (1+betaV*mV*alphaV)
     t3 = (1-sigmaS*mS*(alphaS/(1-avWRF)))
     t4 = (1+betaS*mS*(alphaS/(1-avWRF)))
-    print(t1.max())
-    print(t2.max())
-    print(t3.max())
-    print(t4.max())
+    # print(t1.max())
+    # print(t2.max())
+    # print(t3.max())
+    # print(t4.max())
 
     #===========================VERIFICAR!!!
     fr = (t1*t2*t3*t4)**0.5
@@ -297,6 +297,8 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
         matriz de ustar do WRF.
 
     """
+    print('=====STARTING metPrep.py=====' )
+    
     
     # Extraindo dado de fração de vegetação no domínio usado no WRF
     avWRF = ds['VEGFRA'][lia,:,:]/100

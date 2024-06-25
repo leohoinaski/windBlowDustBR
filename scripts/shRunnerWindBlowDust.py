@@ -213,7 +213,7 @@ if __name__ == '__main__':
             
             # executa a função windBlowDustCalc
             Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
-                                                ustarWRF,ustarT,ustarTd)
+                                                ustar,ustarT,ustarTd)
             
             # já rodou uma vez, logo, não precisa resetar os arquivos 
             # intermediários
@@ -227,7 +227,11 @@ if __name__ == '__main__':
         
         # estima a massa total de particulas dentro da faixa da fração
         # faz a integral dos dados estimados
-        FdustD = np.trapz(FdustTotal,dx=dx, axis=0)
+        #FdustD = np.trapz(FdustTotal,dx=dx, axis=0)
+        
+        
+        # faz a média do fluxo para cada diâmetro
+        FdustD = np.nanmedian(FdustTotal, axis=0)   
         
         # cria o netCDF com a estimativa das particulas
         ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',
@@ -240,7 +244,7 @@ if __name__ == '__main__':
             FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
         elif EmisD==PMC:
             FdustCOARSE = FdustD
-            FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustFINE)
+            FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustCOARSE)
         else:
             print('You have selected an awkward fraction')
         

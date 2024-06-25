@@ -78,10 +78,10 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-mcipPath='/media/leohoinaski/HDD/MG_3km'
-#wrfoutFolder='/mnt/sdb1/MG_3km'
-#mcipPath='/mnt/sdb1/MG_3km'
+#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+#mcipPath='/media/leohoinaski/HDD/MG_3km'
+wrfoutFolder='/mnt/sdb1/MG_3km'
+mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
@@ -153,12 +153,12 @@ datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
                                                                   wrf.ALL_TIMES)))
 
 # identifica datas coincidentes no MCIP e WRF
-print(datesTime.shape)
+#print(datesTime.shape)
 lia, loc = ismember.ismember(np.array(datesTime.datetime), 
                              np.array(datesTimeMCIP.datetime))
 
 # executa a função de regridMAPBIOMAS
-print(lia.shape)
+#print(lia.shape)
 av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,
                                              outfolder,year,idSoils,RESET_GRID)
 
@@ -194,7 +194,7 @@ for EmisD  in Fractions:
         
         # executa a função windBlowDustCalc
         Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
-                                            ustarWRF,ustarT,ustarTd)
+                                            ustar,ustarT,ustarTd)
         
         # já rodou uma vez, logo, não precisa resetar os arquivos 
         # intermediários
@@ -208,7 +208,10 @@ for EmisD  in Fractions:
     
     # estima a massa total de particulas dentro da faixa da fração
     # faz a integral dos dados estimados
-    FdustD = np.trapz(FdustTotal,dx=dx, axis=0)   
+    #FdustD = np.trapz(FdustTotal,dx=dx, axis=0)   
+    
+    # faz a média do fluxo para cada diâmetro
+    FdustD = np.nanmedian(FdustTotal, axis=0)   
     print(FdustD.shape)
     print(np.nanmax(FdustD))
     
@@ -223,7 +226,7 @@ for EmisD  in Fractions:
         FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
     elif EmisD==PMC:
         FdustCOARSE = FdustD
-        FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustFINE)
+        FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustCOARSE)
         print('FdustCOARSE max: '+str(FdustCOARSE.max()))
     else:
         print('You have selected an awkward fraction')
@@ -289,11 +292,11 @@ ax.set_ylim([lat.min(),lat.max()])
 ax.set_frame_on(False)
 ax.set_xticks([])
 ax.set_yticks([])
-cbar = fig.colorbar(pcm,ax=ax,fraction=0.04, pad=0.02,
-                        #extend='both', 
-                        #ticks=bounds,
-                        #spacing='uniform',
-                        orientation='horizontal',)
+# cbar = fig.colorbar(pcm,ax=ax,fraction=0.04, pad=0.02,
+#                         #extend='both', 
+#                         #ticks=bounds,
+#                         #spacing='uniform',
+#                         orientation='horizontal',)
 
 
 # avWRF no espaço
@@ -329,7 +332,7 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
                         orientation='horizontal',)
 
 fig, ax = plt.subplots()
-pcm = ax.pcolor(lon,lat,np.log(alarea[1,:, :]))
+pcm = ax.pcolor(lon,lat,np.nansum(alarea[:,:, :],axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('alarea')
 ax.set_xlim([lon.min(),lon.max()])
@@ -398,32 +401,34 @@ pcm = ax.pcolor(lon,lat,np.nansum(FdustD[:, :, :], axis=0),norm=colors.LogNorm()
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_xticks([])
 ax.set_yticks([])
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
 cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
                         #extend='both', 
                         #ticks=bounds,
                         #spacing='uniform',
                         orientation='horizontal',)
-cbar.ax.set_xlabel(EmisD['tag']+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
+cbar.ax.set_xlabel(' FdustD Wind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
 ax.set_frame_on(False)
 cbar.ax.tick_params(labelsize=6) 
 fig.tight_layout()
 #ax.set_title('FdustD')
 
 fig, ax = plt.subplots()
-ax.scatter(ustarWRF.flatten(),FdustD.flatten())
+ax.scatter(ustar.flatten(),FdustD.flatten())
 ax.set_title('FdustD vs ustar')
 ax.set_yscale('log')
 #https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
 
 
 fig, ax = plt.subplots()
-ax.scatter(ustarWRF.flatten(),Fvtot.flatten())
+ax.scatter(ustar.flatten(),Fvtot.flatten())
 ax.set_title('Fvtot vs ustar')
 ax.set_yscale('log')
 #https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
 
 fig, ax = plt.subplots()
-ax.scatter(ustarWRF.flatten(),Fhtot.flatten())
+ax.scatter(ustar.flatten(),Fhtot.flatten())
 ax.set_title('Fhtot vs ustar')
 ax.set_yscale('log')
 
@@ -439,11 +444,13 @@ pcm = ax.pcolor(lon,lat,np.nansum(FdustFINE[:, :, :], axis=0),norm=colors.LogNor
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_xticks([])
 ax.set_yticks([])
-cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
-                        #extend='both', 
-                        #ticks=bounds,
-                        #spacing='uniform',
-                        orientation='horizontal',)
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+# cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+#                         #extend='both', 
+#                         #ticks=bounds,
+#                         #spacing='uniform',
+#                         orientation='horizontal',)
 
 cbar.ax.set_xlabel('PMFINE'+'\nWind blow Dust emission\n (g/s)', rotation=0,fontsize=8)
 ax.set_frame_on(False)
@@ -456,6 +463,8 @@ pcm = ax.pcolor(lon,lat,np.nanmax(FdustCOARSE[:, :, :], axis=0),norm=colors.LogN
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_xticks([])
 ax.set_yticks([])
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
 cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
                         #extend='both', 
                         #ticks=bounds,
