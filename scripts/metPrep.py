@@ -31,9 +31,8 @@ import wrf
 
 def ustarCalc(uz,z0):
     """
-    Esta função calcula a velocidade frictiva. Não estamos usando esta função
-    pois os resultados não são bons. 
-
+    Esta função calcula a velocidade frictiva. 
+    
     Parameters
     ----------
     uz : numpy array
