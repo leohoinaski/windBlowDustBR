@@ -78,13 +78,14 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-#mcipPath='/media/leohoinaski/HDD/MG_3km'
-wrfoutFolder='/mnt/sdb1/MG_3km'
-mcipPath='/mnt/sdb1/MG_3km'
+wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+mcipPath='/media/leohoinaski/HDD/MG_3km'
+#wrfoutFolder='/mnt/sdb1/MG_3km'
+#mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
+mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
@@ -111,10 +112,15 @@ else:
     os.makedirs(outfolder, exist_ok=True)
 
 # abre o arquivo METCROD3D
-ds = nc.Dataset(mcipMETCRO3Dpath)
+dsMETCRO3D = nc.Dataset(mcipMETCRO3Dpath)
+
+# abre o arquivo METCROD3D
+dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
+latMCIP = dsGRIDDOT2D['LATU'][0,0,:,:]
+lonMCIP = dsGRIDDOT2D['LONV'][0,0,:,:]
 
 # Extrai as datas do arquivo do MCIP
-datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
+datesTimeMCIP = ncCreate.datePrepCMAQ(dsMETCRO3D)
 print(datesTimeMCIP.shape)
 
 # Deinindo os arquivos do WRF que serão abertos. Devem ser compatíveis com 
@@ -148,6 +154,10 @@ wrfoutPath = wrfoutFolder+'/'+files[0]
 # abre os arquivos do WRF
 ds = nc.MFDataset(files)
 
+# Extraindo latitudes e longitudes em graus
+lat = ds['XLAT'][0,:,:]
+lon = ds['XLONG'][0,:,:]
+
 # extrai as datas dos arquivos do WRF que foram abertos
 datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
                                                                   wrf.ALL_TIMES)))
@@ -157,10 +167,14 @@ datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
 lia, loc = ismember.ismember(np.array(datesTime.datetime), 
                              np.array(datesTimeMCIP.datetime))
 
+lialat, loclat = ismember.ismember(lat[:,0],latMCIP[:,0])
+lialon, loclon = ismember.ismember(lon[0,:],lonMCIP[0,:])
+
 # executa a função de regridMAPBIOMAS
 #print(lia.shape)
 av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,
-                                             outfolder,year,idSoils,RESET_GRID)
+                                             outfolder,year,idSoils,RESET_GRID,
+                                             lialon,lialat)
 
 # loop para cada fração do PM
 for EmisD  in Fractions:

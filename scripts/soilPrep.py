@@ -296,16 +296,19 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     soilIdx=[]
     for index, row in gdf.iterrows():
         clipped = gpd.clip(shapeSolos, row.geometry)
-        if clipped['DSC_TEXTUR'].iloc[0] == 'argilosa  ou muito argilosa':
-            soilIdx.append(3)
-        elif clipped['DSC_TEXTUR'].iloc[0] == 'media':
-            soilIdx.append(2)
-        elif clipped['DSC_TEXTUR'].iloc[0] == 'arenosa':
-            soilIdx.append(1)
+        if clipped.shape[0]>0:
+           if clipped['DSC_TEXTUR'].iloc[0] == 'argilosa  ou muito argilosa':
+               soilIdx.append(3)
+           elif clipped['DSC_TEXTUR'].iloc[0] == 'media':
+               soilIdx.append(2)
+           elif clipped['DSC_TEXTUR'].iloc[0] == 'arenosa':
+               soilIdx.append(1)
             
+           else:
+               soilIdx.append(np.nan)
         else:
-            soilIdx.append(np.nan)
-    
+           soilIdx.append(np.nan)
+
     # # Inicializando a matriz de pixels de cada idSoil no domínio
     matRegrid = np.empty((lat.shape[0], lat.shape[1]))
     

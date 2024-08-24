@@ -32,7 +32,7 @@ import rioxarray as riox
 
 
 
-def createDomainShp(wrfoutPath):
+def createDomainShp(wrfoutPath,lialon,lialat):
     """
     Esta função é utilizada para gerar o geodataframe com o domínio de modelagem
     e extrair as coordenadas do arquivo do WRF.
@@ -57,8 +57,8 @@ def createDomainShp(wrfoutPath):
     ds = nc.Dataset(wrfoutPath)
     
     # Extraindo latitudes e longitudes em graus
-    lat = ds['XLAT'][0,:,:]
-    lon = ds['XLONG'][0,:,:]
+    lat = ds['XLAT'][0,lialat,lialon]
+    lon = ds['XLONG'][0,lialat,lialon]
     
     # Criando o retângulo do domínio
     lat_point_list = [lat.min(), lat.max(), lat.max(), lat.min(), lat.min()]
@@ -392,7 +392,7 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     
 
 
-def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID): 
+def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,lialon,lialat): 
     """
     
 
@@ -440,7 +440,7 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
             print ('You already have the regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc file')
             
             # Cria o domínio
-            domainShp,lat,lon =  createDomainShp(wrfoutPath)
+            domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
             
             # ABre o arquivo já criado
             ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc')
@@ -456,7 +456,7 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID):
         else:
             
             # Cria o domínio
-            domainShp,lat,lon =  createDomainShp(wrfoutPath)
+            domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
             
             # Extrai matriz de lat e lon
             x, y = rasterLatLon(outfolder,GDNAM,inputFolder,year)
