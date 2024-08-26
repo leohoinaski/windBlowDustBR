@@ -300,10 +300,10 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
     
     
     # Extraindo dado de fração de vegetação no domínio usado no WRF
-    avWRF = ds['VEGFRA'][lia,:,:]/100
+    avWRF = ds['VEGFRA'][lia,:-1,:-1]/100
     
     # extraindo dados de ustar do WRF
-    ustarWRF = ds['UST'][lia,:,:]
+    ustarWRF = ds['UST'][lia,:-1,:-1]
     
     # estimando rugosidade
     z0,alphaV,alphaS = roughness(tablePath,avWRF)
@@ -315,7 +315,7 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
     ustar = ustarCalc(uz,z0)
     
     # extraindo a umidade do solo do WRF
-    w = ds['SMOIS'][lia,0,:,:]
+    w = ds['SMOIS'][lia,0,:-1,:-1]
     
     # estimando ustarT e ustarTd de acordo com o artigo
     ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF)

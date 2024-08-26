@@ -32,45 +32,45 @@ import rioxarray as riox
 
 
 
-def createDomainShp(wrfoutPath,lialon,lialat):
-    """
-    Esta função é utilizada para gerar o geodataframe com o domínio de modelagem
-    e extrair as coordenadas do arquivo do WRF.
+# def createDomainShp(wrfoutPath,lialon,lialat):
+#     """
+#     Esta função é utilizada para gerar o geodataframe com o domínio de modelagem
+#     e extrair as coordenadas do arquivo do WRF.
 
-    Parameters
-    ----------
-    wrfoutPath : path
-        Caminho para o arquivo do WRF.
+#     Parameters
+#     ----------
+#     wrfoutPath : path
+#         Caminho para o arquivo do WRF.
 
-    Returns
-    -------
-    domainShp : geoDataFrame
-        Geodataframe com a geometria do domínio de modelagem.
-    lat : numpy array
-        Matriz de latitudes.
-    lon : numoy array
-        matriz de longitudes.
+#     Returns
+#     -------
+#     domainShp : geoDataFrame
+#         Geodataframe com a geometria do domínio de modelagem.
+#     lat : numpy array
+#         Matriz de latitudes.
+#     lon : numoy array
+#         matriz de longitudes.
 
-    """
+#     """
     
-    # Abringo arquivo do WRF
-    ds = nc.Dataset(wrfoutPath)
+#     # Abringo arquivo do WRF
+#     ds = nc.Dataset(wrfoutPath)
     
-    # Extraindo latitudes e longitudes em graus
-    lat = ds['XLAT'][0,lialat,lialon]
-    lon = ds['XLONG'][0,lialat,lialon]
+#     # Extraindo latitudes e longitudes em graus
+#     lat = ds['XLAT'][0,lialat,lialon]
+#     lon = ds['XLONG'][0,lialat,lialon]
     
-    # Criando o retângulo do domínio
-    lat_point_list = [lat.min(), lat.max(), lat.max(), lat.min(), lat.min()]
-    lon_point_list = [lon.min(), lon.min(), lon.max(), lon.max(), lon.min()]
+#     # Criando o retângulo do domínio
+#     lat_point_list = [lat.min(), lat.max(), lat.max(), lat.min(), lat.min()]
+#     lon_point_list = [lon.min(), lon.min(), lon.max(), lon.max(), lon.min()]
     
-    # Criando a geometria shapely 
-    polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
+#     # Criando a geometria shapely 
+#     polygon_geom = Polygon(zip(lon_point_list, lat_point_list))
     
-    # Colocando a geometria em um geodataframe
-    domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
+#     # Colocando a geometria em um geodataframe
+#     domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
     
-    return  domainShp,lat,lon
+#     return  domainShp,lat,lon
 
 
 
@@ -184,7 +184,7 @@ def rasterLatLon(outfolder,GRDNAM,inputFolder,year):
 
 
 
-def rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder): 
+def rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder,grids): 
     """
     Função utilizada para fazer a contagem de pixels de uma categoria de uso do
     solo na grade de modelagem. 
@@ -224,33 +224,33 @@ def rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder):
 
     """
 
-    # Extraindo os cantos das longitudes e latitudes
-    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
-                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
+    # # Extraindo os cantos das longitudes e latitudes
+    # lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
+    #                       lon[0,-1]+np.diff(lon[0,-3:-1])/2)
     
-    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
-                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
+    # latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
+    #                       lat[-1,0]+np.diff(lat[-3:-1,0])/2)
     
-    # Inicializando a grid
-    grids=[]
+    # # Inicializando a grid
+    # grids=[]
     
-    # Loop para cada longitude
-    for ii in range(1,lonCorner.shape[0]):
+    # # Loop para cada longitude
+    # for ii in range(1,lonCorner.shape[0]):
         
-        #Loop over each cel in y direction
-        for jj in range(1,latCorner.shape[0]):
+    #     #Loop over each cel in y direction
+    #     for jj in range(1,latCorner.shape[0]):
             
-            #Criando retângulo de de cada célula
-            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
-            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
+    #         #Criando retângulo de de cada célula
+    #         lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
+    #         lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
             
-            # Criando um polígono para cada celula
-            cel = Polygon(zip(lon_point_list, lat_point_list))
-            grids.append(cel)
+    #         # Criando um polígono para cada celula
+    #         cel = Polygon(zip(lon_point_list, lat_point_list))
+    #         grids.append(cel)
             
     
     # Inicializando a matriz de pixels de cada idSoil no domínio
-    matRegrid=np.empty((len(idSoils),lat.shape[0],lat.shape[1]))
+    matRegrid=np.empty((len(idSoils),lat.shape[0]-1,lon.shape[1]-1))
     
     # loop para cada idSoil
     for kk, soilid in enumerate(idSoils):
@@ -303,10 +303,10 @@ def rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder):
                     pixelsIn.append(np.nan)
                     
         # preenchendo a matriz de número de pixels para cada soilID (kk)           
-        matRegrid[kk,:,:] = np.array(pixelInRaster).reshape((lon.shape[1],lon.shape[0])).transpose() 
+        matRegrid[kk,:,:] = np.array(pixelInRaster).reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose() 
         
         # preenchendo a matriz de número de pixels total em cada celula
-        pixelsIn = np.array(pixelsIn).reshape((lon.shape[1],lon.shape[0])).transpose() 
+        pixelsIn = np.array(pixelsIn).reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose() 
     
     # Removendo valores nan
     matRegrid[np.isnan(matRegrid)]=0
@@ -392,7 +392,8 @@ def createNETCDF(outfolder,name,data,xlon,ylat):
     
 
 
-def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,lialon,lialat): 
+def main(GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,
+         grids,domainShp,lat,lon): 
     """
     
 
@@ -440,7 +441,7 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,lialon,l
             print ('You already have the regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc file')
             
             # Cria o domínio
-            domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
+            #domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
             
             # ABre o arquivo já criado
             ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc')
@@ -456,13 +457,15 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,lialon,l
         else:
             
             # Cria o domínio
-            domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
+            #domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
             
             # Extrai matriz de lat e lon
             x, y = rasterLatLon(outfolder,GDNAM,inputFolder,year)
             
             # Faz os regrids e determina número de pixels de al, av, etc
-            mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder)
+            mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(x,y,lat,lon,idSoils,
+                                                             year,inputFolder,
+                                                             grids)
             
             # Esta parte serve para salvar o arquivo em netCDF para evitar 
             # rodar quando já existir o arquivo
@@ -479,13 +482,15 @@ def main(wrfoutPath,GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,lialon,l
     else:
         
         # cria o dominio
-        domainShp,lat,lon =  createDomainShp(wrfoutPath)
+        #domainShp,lat,lon =  createDomainShp(wrfoutPath)
         
         # cria matriz de latlon
         x, y = rasterLatLon(outfolder,GDNAM,inputFolder,year)
         
         # Faz os regrids e determina número de pixels de al, av, etc
-        mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(x,y,lat,lon,idSoils,year,inputFolder)
+        mapbioRegrid,pixelsIn,av,al,alarea= rasterInGrid(x,y,lat,lon,idSoils,
+                                                         year,inputFolder,
+                                                         grids)
         
         # Esta parte serve para salvar o arquivo em netCDF para evitar 
         # rodar quando já existir o arquivo

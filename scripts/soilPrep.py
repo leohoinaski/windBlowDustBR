@@ -233,7 +233,7 @@ def find_nearest(array, value):
     
     return idx
 
-def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
+def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM,grids):
     """
     
 
@@ -258,29 +258,29 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM):
     """
     
   
-    # Extraindo os cantos das longitudes e latitudes
-    lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
-                          lon[0,-1]+np.diff(lon[0,-3:-1])/2)
+    # # Extraindo os cantos das longitudes e latitudes
+    # lonCorner = np.append(np.append(lon[0,:-1]- np.diff(lon[0,:])/2,lon[0,-1]),
+    #                       lon[0,-1]+np.diff(lon[0,-3:-1])/2)
     
-    latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
-                          lat[-1,0]+np.diff(lat[-3:-1,0])/2)
+    # latCorner = np.append(np.append(lat[:-1,0]- np.diff(lat[:,0])/2,lat[-1,0]),
+    #                       lat[-1,0]+np.diff(lat[-3:-1,0])/2)
     
-    # Inicializando a grid
-    grids=[]
+    # # Inicializando a grid
+    # grids=[]
     
-    # Loop para cada longitude
-    for ii in range(1,lonCorner.shape[0]):
+    # # Loop para cada longitude
+    # for ii in range(1,lonCorner.shape[0]):
         
-        #Loop over each cel in y direction
-        for jj in range(1,latCorner.shape[0]):
+    #     #Loop over each cel in y direction
+    #     for jj in range(1,latCorner.shape[0]):
             
-            #Criando retângulo de de cada célula
-            lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
-            lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
+    #         #Criando retângulo de de cada célula
+    #         lat_point_list = [latCorner[jj-1], latCorner[jj], latCorner[jj], latCorner[jj-1]]
+    #         lon_point_list = [lonCorner[ii-1], lonCorner[ii-1], lonCorner[ii], lonCorner[ii]]
             
-            # Criando um polígono para cada celula
-            cel = Polygon(zip(lon_point_list, lat_point_list))
-            grids.append(cel)
+    #         # Criando um polígono para cada celula
+    #         cel = Polygon(zip(lon_point_list, lat_point_list))
+    #         grids.append(cel)
             
     
     
@@ -404,7 +404,7 @@ def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
 
 
     
-def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
+def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID,grids):
     """
     Esta função controla a geração de arquivos de solo - claycontent, soiltexture,
     porcentagem de particulas de um determinado diametro.
@@ -475,7 +475,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
           regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
           
           # executa a função para fazer o regrid do soilTexture
-          regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+          regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM,grids)
           
           # executa a função para estimar a porcentagem de particulas na grade
           sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)
@@ -498,7 +498,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID):
         regMap.createNETCDF(outfolder,'regridClay_'+GDNAM,clayRegrid,lon,lat)
         
         # executa a função para fazer o regrid do soilTexture
-        regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM)
+        regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM,grids)
         
         # executa a função para estimar a porcentagem de particulas na grade
         sRef = soilType(inputFolder,outfolder,lat,lon,D,GDNAM)

@@ -31,6 +31,7 @@ import pandas as pd
 from datetime import timedelta
 import ismember
 import windBlowDustSpeciation as wbds
+import gridDetails as grd
 
 
 # Dicionários de poluentes
@@ -78,14 +79,14 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-mcipPath='/media/leohoinaski/HDD/MG_3km'
-#wrfoutFolder='/mnt/sdb1/MG_3km'
-#mcipPath='/mnt/sdb1/MG_3km'
+#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+#mcipPath='/media/leohoinaski/HDD/MG_3km'
+wrfoutFolder='/mnt/sdb1/MG_3km'
+mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
-mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'.nc'
+#mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'.nc'
 windBlowDustFolder = os.path.dirname(os.getcwd())
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
@@ -111,70 +112,74 @@ if os.path.isdir(outfolder):
 else:
     os.makedirs(outfolder, exist_ok=True)
 
-# abre o arquivo METCROD3D
-dsMETCRO3D = nc.Dataset(mcipMETCRO3Dpath)
+# # abre o arquivo METCROD3D
+# dsMETCRO3D = nc.Dataset(mcipMETCRO3Dpath)
 
-# abre o arquivo METCROD3D
-dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
-latMCIP = dsGRIDDOT2D['LATU'][0,0,:,:]
-lonMCIP = dsGRIDDOT2D['LONV'][0,0,:,:]
+# # abre o arquivo METCROD3D
+# dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
+# latMCIP = dsGRIDDOT2D['LATU'][0,0,:,:]
+# lonMCIP = dsGRIDDOT2D['LONV'][0,0,:,:]
 
-# Extrai as datas do arquivo do MCIP
-datesTimeMCIP = ncCreate.datePrepCMAQ(dsMETCRO3D)
-print(datesTimeMCIP.shape)
+# # Extrai as datas do arquivo do MCIP
+# datesTimeMCIP = ncCreate.datePrepCMAQ(dsMETCRO3D)
+# print(datesTimeMCIP.shape)
 
-# Deinindo os arquivos do WRF que serão abertos. Devem ser compatíveis com 
-# as datas do respectivo arquivo do MCIP. 
-# file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
-#          'wrfout_'+domain+'_'+str(datesTimeMCIP.year[0]).zfill(4)+'-'+\
-#              str(datesTimeMCIP.month[0]).zfill(2)+'-'+\
-#                  str(datesTimeMCIP.day[0]).zfill(2) in i]
-print('wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
-             str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
-                 str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2))
-# file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
-#          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
+# # Deinindo os arquivos do WRF que serão abertos. Devem ser compatíveis com 
+# # as datas do respectivo arquivo do MCIP. 
+# # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
+# #          'wrfout_'+domain+'_'+str(datesTimeMCIP.year[0]).zfill(4)+'-'+\
+# #              str(datesTimeMCIP.month[0]).zfill(2)+'-'+\
+# #                  str(datesTimeMCIP.day[0]).zfill(2) in i]
+# print('wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
 #              str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
-#                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
-files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
-                 str((datesTimeMCIP.datetime[0]).month).zfill(2)+'-'+\
-                     str((datesTimeMCIP.datetime[0]).day).zfill(2)+'_00:00:00',\
-           'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
-                 str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
-                     str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
+#                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2))
+# # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
+# #          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
+# #              str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
+# #                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
+# files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
+#                  str((datesTimeMCIP.datetime[0]).month).zfill(2)+'-'+\
+#                      str((datesTimeMCIP.datetime[0]).day).zfill(2)+'_00:00:00',\
+#            'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
+#                  str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
+#                      str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
 
-# pega o caminho da pasta atual
-cwd = os.getcwd()
+# # pega o caminho da pasta atual
+# cwd = os.getcwd()
 
-# move para a pasta do WRF
-os.chdir(wrfoutFolder)
-#wrfoutPath = wrfoutFolder+'/'+file[0]
-wrfoutPath = wrfoutFolder+'/'+files[0]
+# # move para a pasta do WRF
+# os.chdir(wrfoutFolder)
+# #wrfoutPath = wrfoutFolder+'/'+file[0]
+# wrfoutPath = wrfoutFolder+'/'+files[0]
 
-# abre os arquivos do WRF
-ds = nc.MFDataset(files)
+# # abre os arquivos do WRF
+# ds = nc.MFDataset(files)
 
-# Extraindo latitudes e longitudes em graus
-lat = ds['XLAT'][0,:,:]
-lon = ds['XLONG'][0,:,:]
+# # Extraindo latitudes e longitudes em graus
+# lat = ds['XLAT'][0,:,:]
+# lon = ds['XLONG'][0,:,:]
 
-# extrai as datas dos arquivos do WRF que foram abertos
-datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
-                                                                  wrf.ALL_TIMES)))
+# # extrai as datas dos arquivos do WRF que foram abertos
+# datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
+#                                                                   wrf.ALL_TIMES)))
 
-# identifica datas coincidentes no MCIP e WRF
-#print(datesTime.shape)
-lia, loc = ismember.ismember(np.array(datesTime.datetime), 
-                             np.array(datesTimeMCIP.datetime))
+# # identifica datas coincidentes no MCIP e WRF
+# #print(datesTime.shape)
+# lia, loc = ismember.ismember(np.array(datesTime.datetime), 
+#                              np.array(datesTimeMCIP.datetime))
 
-lialat, loclat = ismember.ismember(lat[:,0],latMCIP[:,0])
-lialon, loclon = ismember.ismember(lon[0,:],lonMCIP[0,:])
+# lialat, loclat = ismember.ismember(lat[:,0],latMCIP[:,0])
+# lialon, loclon = ismember.ismember(lon[0,:],lonMCIP[0,:])
 
 # executa a função de regridMAPBIOMAS
 #print(lia.shape)
-av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,
+
+ds,datesTime,lia,domainShp,lat,lon,grids = grd.main(mcipMETCRO3Dpath,wrfoutFolder,domain)
+
+
+av,al,alarea,lat,lon,domainShp = regMap.main(GDNAM,inputFolder,
                                              outfolder,year,idSoils,RESET_GRID,
-                                             lialon,lialat)
+                                             grids,domainShp,lat,lon)
 
 # loop para cada fração do PM
 for EmisD  in Fractions:
@@ -200,7 +205,7 @@ for EmisD  in Fractions:
         
         # executa a função soilPrep
         clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,
-                                  lat,lon,diameters,RESET_GRID)
+                                  lat,lon,diameters,RESET_GRID,grids)
         
         # executa a função metPrep
         ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,
