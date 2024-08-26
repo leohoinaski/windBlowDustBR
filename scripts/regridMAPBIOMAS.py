@@ -469,7 +469,7 @@ def main(GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,
             
             # Esta parte serve para salvar o arquivo em netCDF para evitar 
             # rodar quando já existir o arquivo
-            matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
+            matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0]-1,lat.shape[1]-1))
             matRegrid2[:,:,:] = np.nan
             matRegrid2[0,:,:] = al
             matRegrid2[1,:,:] = av
@@ -494,14 +494,16 @@ def main(GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,
         
         # Esta parte serve para salvar o arquivo em netCDF para evitar 
         # rodar quando já existir o arquivo
-        matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0],lat.shape[1]))
+        matRegrid2=np.empty((2+alarea.shape[0],lat.shape[0]-1,lat.shape[1]-1))
         matRegrid2[:,:,:] = np.nan
         matRegrid2[0,:,:] = al
         matRegrid2[1,:,:] = av
         matRegrid2[2:(2+alarea.shape[0]),:,:] = alarea
         
         # Cria o arquivo netCDF de regrid e coloca na pasta de out
-        createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GDNAM,matRegrid2,lon,lat)
+        createNETCDF(outfolder,'regridMAPBIOMAS_'+str(year)+'_'+GDNAM,
+                     matRegrid2,lon[:-1,:-1],lat[:-1,:-1])
+        
     return av,al,alarea,lat,lon,domainShp
 
 

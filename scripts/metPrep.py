@@ -74,7 +74,7 @@ def ustarCalc(uz,z0):
 
     return ustar
 
-def roughness(tablePath,avWRF,):
+def roughness(tablePath,avWRF):
     """
     
     Esta função é utilizada para calcular a rugosidade da superfície de acordo
@@ -261,7 +261,7 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF):
     
     return ustarT,ustarTd
 
-def main(ds,tablePath,av,al,D,clayRegrid,lia):
+def main(ds,tablePath,av,al,D,clayRegrid,lia,lat_index,lon_index):
     """
     Esta função controla todo o script de metPrep.
 
@@ -300,22 +300,25 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia):
     
     
     # Extraindo dado de fração de vegetação no domínio usado no WRF
-    avWRF = ds['VEGFRA'][lia,:-1,:-1]/100
-    
+    avWRF = ds['VEGFRA'][lia,lat_index,lon_index]/100
+    avWRF = avWRF[:,:-1,:-1]
     # extraindo dados de ustar do WRF
-    ustarWRF = ds['UST'][lia,:-1,:-1]
+    ustarWRF = ds['UST'][lia,lat_index,lon_index]
+    ustarWRF = ustarWRF[:,:-1,:-1]
     
     # estimando rugosidade
     z0,alphaV,alphaS = roughness(tablePath,avWRF)
     
     # extraindo velocidade do vento do WRF
-    uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,lia,:,:])
+    uz = np.array(wrf.g_wind.get_destag_wspd_wdir10(ds,timeidx=wrf.ALL_TIMES)[0,lia,lat_index,lon_index])
+    uz = uz[:,:-1,:-1]
     
     # calculando ustar de acordo com artigo
     ustar = ustarCalc(uz,z0)
     
     # extraindo a umidade do solo do WRF
-    w = ds['SMOIS'][lia,0,:-1,:-1]
+    w = ds['SMOIS'][lia,0,lat_index,lon_index]
+    w = w[:,:-1,:-1]
     
     # estimando ustarT e ustarTd de acordo com o artigo
     ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF)

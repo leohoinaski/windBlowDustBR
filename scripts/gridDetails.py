@@ -18,7 +18,19 @@ import pandas as pd
 import wrf
 import ismember
 
-def createDomainShp(wrfoutPath):
+def finder(a, b):
+    # Step 1: Compute the absolute differences
+    diff = np.abs(a[:, np.newaxis] - b)
+    
+    # Step 2: Find the index of the minimum difference along the axis
+    closest_index = np.argmin(diff, axis=1)
+
+    # If you want the actual closest values from `b`, you can use:
+    closest_values = b[closest_index]
+
+    return closest_values,closest_index
+
+def createDomainShp(mcipGRIDDOT2Dpath,wrfoutPath):
     """
     Esta função é utilizada para gerar o geodataframe com o domínio de modelagem
     e extrair as coordenadas do arquivo do WRF.
@@ -38,16 +50,22 @@ def createDomainShp(wrfoutPath):
         matriz de longitudes.
 
     """
+    # abre o arquivo METCROD3D
+    dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
+    #latMCIP = dsGRIDDOT2D['LATD'][0,0,:,:]
+    #lonMCIP = dsGRIDDOT2D['LOND'][0,0,:,:]
+    xv,yv,lonGRIDDOT,latGRIDDOT = ioapiCoords(dsGRIDDOT2D)
+    lonMCIP,latMCIP = eqmerc2latlon(dsGRIDDOT2D,xv,yv)
+    
     
     # Abringo arquivo do WRF
     ds = nc.Dataset(wrfoutPath)
-    # Extraindo latitudes e longitudes em graus
-    # lat = ds['XLAT'][0,lialat,lialon]
-    # lon = ds['XLONG'][0,lialat,lialon]
-    
-    lat = ds['XLAT'][0,:-1,:-1]
-    lon = ds['XLONG'][0,:-1,:-1]
-    
+    #Extraindo latitudes e longitudes em graus
+    latWRF = ds['XLAT'][0,:,:]
+    lonWRF = ds['XLONG'][0,:,:]
+
+    lat,lat_index = finder(latMCIP[:,0], latWRF[:,0])
+    lon,lon_index = finder(lonMCIP[:,0], lonWRF[:,0])
     
     # Criando o retângulo do domínio
     lat_point_list = [lat.min(), lat.max(), lat.max(), lat.min(), lat.min()]
@@ -59,12 +77,16 @@ def createDomainShp(wrfoutPath):
     # Colocando a geometria em um geodataframe
     domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
     
-    return  domainShp,lat,lon
+    lat,lon = np.meshgrid(lat,lon)
+    
+    return  domainShp,lat,lon,lat_index,lon_index
 
 def ioapiCoords(ds):
     # Latlon
     lonI = ds.XORIG
     latI = ds.YORIG
+    print('lonI = '+str(lonI))
+    print('latI = '+str(latI))
     
     # Cell spacing 
     xcell = ds.XCELL
@@ -87,6 +109,16 @@ def eqmerc2latlon(ds,xv,yv):
     xlon, ylat = p(xv, yv, inverse=True)
     return xlon,ylat
 
+def eqmerc2latlonMETCROD(ds,xv,yv):
+
+    mapstr = '+proj=merc +a=%s +b=%s +lat_ts=0 +lon_0=%s' % (
+              6370000, 6370000, ds.XCENT)
+    #p = pyproj.Proj("+proj=merc +lon_0="+str(ds.P_GAM)+" +k=1 +x_0=0 +y_0=0 +a=6370000 +b=6370000 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+    p = pyproj.Proj(mapstr)
+    xlon, ylat = p(xv-ds.XCELL/2, yv-ds.YCELL/2, inverse=True)
+    return xlon,ylat
+
+
 def gridding(lat,lon):
     # Extraindo os cantos das longitudes e latitudes
    
@@ -108,22 +140,16 @@ def gridding(lat,lon):
             # Criando um polígono para cada celula
             cel = Polygon(zip(lon_point_list, lat_point_list))
             grids.append(cel)
-            
+    
+    
     return grids
 
-def main(mcipMETCRO3Dpath,wrfoutFolder,domain):
+def main(mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain):
     
     # abre o arquivo METCROD3D
     dsMETCRO3D = nc.Dataset(mcipMETCRO3Dpath)
-    # xv,yv,lonMETCROD,latMETCROD = ioapiCoords(dsMETCRO3D)
-    # xlon,ylat = eqmerc2latlon(dsMETCRO3D,xv,yv)
-    
-    # abre o arquivo METCROD3D
-    # dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
-    # latMCIP = dsGRIDDOT2D['LATD'][0,0,:,:]
-    # lonMCIP = dsGRIDDOT2D['LOND'][0,0,:,:]
-    # xv,yv,lonMETCROD,latMETCROD = ioapiCoords(dsGRIDDOT2D)
-    # xlon,ylat = eqmerc2latlon(dsGRIDDOT2D,xv,yv)
+    xv,yv,lonMETCROD,latMETCROD = ioapiCoords(dsMETCRO3D)
+    lonMCIPMETCRO,latMCIPMETCROD = eqmerc2latlonMETCROD(dsMETCRO3D,xv,yv)
     
     # Extrai as datas do arquivo do MCIP
     datesTimeMCIP = ncCreate.datePrepCMAQ(dsMETCRO3D)
@@ -174,7 +200,7 @@ def main(mcipMETCRO3Dpath,wrfoutFolder,domain):
     # lialat, loclat = ismember.ismember(lat[:,0],ylat[:,0])
     # lialon, loclon = ismember.ismember(lon[0,:],xlon[0,:])
     
-    domainShp,lat,lon = createDomainShp(wrfoutPath)
+    domainShp,lat,lon,lat_index,lon_index = createDomainShp(mcipGRIDDOT2Dpath,wrfoutPath)
     grids = gridding(lat,lon)
     
-    return ds,datesTime,lia,domainShp,lat,lon,grids
+    return ds,datesTime,lia,domainShp,lat,lon,lat_index,lon_index,grids
