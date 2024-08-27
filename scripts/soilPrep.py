@@ -118,7 +118,7 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     return raster
 
 
-def rasterInGrid(domainShp,raster,x,y,lat,lon):
+def rasterInGrid(domainShp,raster,x,y,lat,lon,grids):
     """
     
     Esta função faz o regrid da matriz de clay content para o domínio de 
@@ -146,62 +146,34 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon):
 
     """
     
-    # Inicializando matriz de longitudes dentro da cada célula do domínio
-    lonsIdx = []
-    
-    # loop para cada valor de longitude do clay content
-    for i in x:
-        
-        # indice que possui da celula que possui a longitude do raster
-        idx = (np.abs(i - lon[0,:])).argmin()
-        lonsIdx.append(idx)
-        
-    # Inicializando matriz de latitudes dentro da cada célula do domínio    
-    latsIdx = []
-    
-    # loop para cada valor de longitude do clay content
-    for i in y:
-        
-        # indice que possui da celula que possui a latitude do raster
-        idx = (np.abs(i - lat[:,0])).argmin()
-        latsIdx.append(idx)
-    
     # Incializando a matriz de regrid do clay content
-    matRegrid=np.empty((lat.shape[0]-1,lat.shape[1]-1))
+    matRegrid=np.empty((lat.shape[0]-1,lon.shape[1]-1))
     # Todos os valores como nan
     matRegrid[:,:] = np.nan
     # Definindo o EPSG
     raster = raster.rio.reproject("EPSG:4326")
     
-    # loop em cada latitude do dominio
-    for ii in range(0,lat.shape[0]-1):
-        
-        # loop em cada longitude do domínio
-        for jj in range(0,lon.shape[1]-1):
-            
-            #print(matArr[idr,idc].sum())
-            # acha os indices da matriz do raster que estão dentro da célula do 
-            #domínio
-            print(str(ii)+' '+str(jj))
-            if (np.size(np.where(np.array(latsIdx)==ii)[0])>0) and \
-                (np.size(np.where(np.array(lonsIdx)==jj)[0])>0):
-                    
-                # define uma matriz de pixels do raster que estão dentro
-                # da respectiva célula
-                matArr = raster[0,np.where(np.array(latsIdx)==ii)[0],
-                                np.where(np.array(lonsIdx)==jj)[0]].data
-                
-                # nan para quando a matriz tiver valores faltantes
-                matArr[np.array(matArr==raster._FillValue)]=np.nan
-               
-                # preenche a nova matriz (dimensão igual ao domínio) com valores
-                # da médiana do clay content na célula
-                matRegrid[ii,jj]=np.nanmedian(matArr)
-                print('------------>Contain Clay')
-            
-            # se não tiver pixels dentro da célula...    
-            else:
-                matRegrid[ii,jj]=0
+    clippedRaster = raster.rio.clip(domainShp.geometry)
+    
+    df = pd.DataFrame({'geometry':grids})
+    gdf = gpd.GeoDataFrame(df, crs="EPSG:4326")
+    gdf.set_geometry('geometry', inplace=True)
+    
+    # Recortando o tipo de solo para cada célula do domínio.
+    clay=[]
+    for index, row in gdf.iterrows():
+        print(index)
+        clipped = clippedRaster.rio.clip(gpd.GeoDataFrame(index=[0], crs="EPSG:4326",geometry=[row.geometry]).geometry)
+        clipped = np.array(clipped)
+        if clipped.shape[0]>0:
+           clay.append(np.nanmean(clipped))
+        else:
+           clay.append(np.nan)
+
+    
+    # fazendo o rashape
+    matRegrid[:,:] = np.array(clay).reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose() 
+
                 
     # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0
@@ -310,10 +282,10 @@ def regridSoilTexture(outfolder,inputFolder,lat,lon,GDNAM,grids):
            soilIdx.append(np.nan)
 
     # # Inicializando a matriz de pixels de cada idSoil no domínio
-    matRegrid = np.empty((lat.shape[0]-1, lat.shape[1]-1))
+    matRegrid = np.empty((lat.shape[0]-1, lon.shape[1]-1))
     
     # fazendo o rashape
-    matRegrid[:,:] = np.array(soilIdx).reshape((lon.shape[1]-1,lon.shape[0]-1)).transpose() 
+    matRegrid[:,:] = np.array(soilIdx).reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose() 
 
     # substitui nan por 0
     matRegrid[np.isnan(matRegrid)] = 0
@@ -468,7 +440,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID,grids):
           x, y = rasterLatLon(raster)
           
           # executa a função para fazer o regrid do clayContent
-          clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+          clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon,grids)
           
           # cria o netCDF com o regrid do clayCOntent
           print('Creating netCDF')
@@ -491,7 +463,7 @@ def main(inputFolder,outfolder,domainShp,GDNAM,lat,lon,D,RESET_GRID,grids):
         x, y = rasterLatLon(raster)
         
         # executa a função para fazer o regrid do clayContent
-        clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon)
+        clayRegrid = rasterInGrid(domainShp,raster,x,y,lat,lon,grids)
         
         # cria o netCDF com o regrid do clayCOntent        
         print('Creating netCDF')

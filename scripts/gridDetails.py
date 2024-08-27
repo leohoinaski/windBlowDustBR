@@ -38,7 +38,12 @@ def createDomainShp(mcipGRIDDOT2Dpath,wrfoutPath):
     Parameters
     ----------
     wrfoutPath : path
-        Caminho para o arquivo do WRF.
+        Caminho para o arquivo do WRF.    # abre o arquivo METCROD3D
+    dsGRIDDOT2D = nc.Dataset(mcipGRIDDOT2Dpath)
+    #latMCIP = dsGRIDDOT2D['LATD'][0,0,:,:]
+    #lonMCIP = dsGRIDDOT2D['LOND'][0,0,:,:]
+    xv,yv,lonGRIDDOT,latGRIDDOT = ioapiCoords(dsGRIDDOT2D)
+    lonMCIP,latMCIP = eqmerc2latlon(dsGRIDDOT2D,xv,yv)
 
     Returns
     -------
@@ -65,7 +70,7 @@ def createDomainShp(mcipGRIDDOT2Dpath,wrfoutPath):
     lonWRF = ds['XLONG'][0,:,:]
 
     lat,lat_index = finder(latMCIP[:,0], latWRF[:,0])
-    lon,lon_index = finder(lonMCIP[:,0], lonWRF[:,0])
+    lon,lon_index = finder(lonMCIP[0,:], lonWRF[0,:])
     
     # Criando o retângulo do domínio
     lat_point_list = [lat.min(), lat.max(), lat.max(), lat.min(), lat.min()]
@@ -77,7 +82,7 @@ def createDomainShp(mcipGRIDDOT2Dpath,wrfoutPath):
     # Colocando a geometria em um geodataframe
     domainShp = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[polygon_geom])   
     
-    lat,lon = np.meshgrid(lat,lon)
+    lon,lat = np.meshgrid(lon,lat)
     
     return  domainShp,lat,lon,lat_index,lon_index
 

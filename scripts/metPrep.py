@@ -298,7 +298,7 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia,lat_index,lon_index):
     """
     print('=====STARTING metPrep.py=====' )
     
-    
+    #latmesh, lonmesh = np.meshgrid(lat_index,lon_index)
     # Extraindo dado de fração de vegetação no domínio usado no WRF
     avWRF = ds['VEGFRA'][lia,lat_index,lon_index]/100
     avWRF = avWRF[:,:-1,:-1]

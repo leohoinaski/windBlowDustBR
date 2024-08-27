@@ -24,22 +24,22 @@ Referências:
 @author: leohoinaski
 
 """
-
-import regridMAPBIOMAS as regMap
-import soilPrep as sp
-import metPrep as mp
-import windBlowDustCalc as wbd
-import netCDFcreator as ncCreate
-import os
-import numpy as np
-import netCDF4 as nc
-import wrf
-import pandas as pd
-from datetime import timedelta
-import ismember
+#sys.path.insert(0, rootPath)
+#import regridMAPBIOMAS as regMap
+#import soilPrep as sp
+#import metPrep as mp
+#import windBlowDustCalc as wbd
+#import netCDFcreator as ncCreate
+#import os
+#import numpy as np
+#import netCDF4 as nc
+#import wrf
+#import pandas as pd
+#from datetime import timedelta
+#import ismember
 import argparse
-import windBlowDustSpeciation as wbds
-
+#import windBlowDustSpeciation as wbds
+import sys
 
 
 if __name__ == '__main__':
@@ -48,16 +48,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', default=0, action='count')
     parser.add_argument('windBlowDustFolder')
+    parser.add_argument('outfolder')
     parser.add_argument('mcipPath')
     parser.add_argument('wrfoutFolder')
     parser.add_argument('domain')
     parser.add_argument('GDNAM')
     parser.add_argument('YEAR', type=int)
     parser.add_argument('RESET_GRID', type=int) # 0 OU 1
+    parser.add_argument('YYYYMMDD')
     args = parser.parse_args()
     
     # passando os argumentos para variáveis
     windBlowDustFolder = args.windBlowDustFolder
+    outfolder = args.outfolder
     mcipPath = args.mcipPath
     wrfoutFolder = args.wrfoutFolder
     domain = args.domain
@@ -65,14 +68,34 @@ if __name__ == '__main__':
     GDNAM  = args.GDNAM
     YEAR = args.YEAR
     RESET_GRID = args.RESET_GRID
+    YYYYMMDD = args.YYYYMMDD
     
+    sys.path.insert(0, windBlowDustFolder+'/scripts')
+    import regridMAPBIOMAS as regMap
+    import soilPrep as sp
+    import metPrep as mp
+    import windBlowDustCalc as wbd
+    import netCDFcreator as ncCreate
+    import os
+    import numpy as np
+    import netCDF4 as nc
+    import wrf
+    import pandas as pd
+    from datetime import timedelta
+    import ismember
+    #import argparse
+    import windBlowDustSpeciation as wbds
+    import gridDetails as grd
+
+
     # definindo o caminho para o arquivo METCRO3D do MCIP
-    mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
+    mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'_'+str(YYYYMMDD)+'.nc'
+    mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'_'+str(YYYYMMDD)+'.nc'
     
     # definição dos caminhos das pastas de input, output e table
     inputFolder = windBlowDustFolder+'/inputs'
     tablePath = windBlowDustFolder+'/inputs/tables'
-    outfolder = windBlowDustFolder+'/Outputs/'+GDNAM
+    #outfolder = windBlowDustFolder+'/Outputs/'+GDNAM
     
     
     # condição para restar ou não os arquivos intermediários.
@@ -125,7 +148,7 @@ if __name__ == '__main__':
     # frações que serão calculadas
     Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
                             #Não precisa incluir o PM10 se já tiver PM25 e PM10
-       
+
     
     # condição para verificar se a pasta de output existe
     if os.path.isdir(outfolder):
@@ -134,16 +157,19 @@ if __name__ == '__main__':
         # se não existir, cria a pasta.
         os.makedirs(outfolder, exist_ok=True)
     
+    # Grid setup
+    ds,datesTime,lia,domainShp,lat,lon,lat_index,lon_index,grids = grd.main(
+        mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain)
+    
     # abre o arquivo METCROD3D
     ds = nc.Dataset(mcipMETCRO3Dpath)
-    
     # Extrai as datas do arquivo do MCIP
     datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
     
     # Deinindo os arquivos do WRF que serão abertos. Devem ser compatíveis com 
     # as datas do respectivo arquivo do MCIP. 
-    # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) and \
-    #          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4)+'-'+\
+    # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) an>
+    #          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4>
     #              str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
     #                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
     files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
@@ -152,7 +178,7 @@ if __name__ == '__main__':
            'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
                  str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
                      str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
-    
+
     # pega o caminho da pasta atual
     cwd = os.getcwd()
     
@@ -178,66 +204,68 @@ if __name__ == '__main__':
     
     # executa a função de regridMAPBIOMAS
     av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,
-                                                 outfolder,YEAR,idSoils,RESET_GRID)
+                                                 outfolder,YEAR,idSoils,RESET_GRID,
+                                                 grids,domainShp,lat,lon)
     
     # loop para cada fração do PM
     for EmisD  in Fractions:
-        
+
         # determina os ranges das particulas - min e max
         Dmax = np.max(EmisD['range'])
         Dmin = np.min(EmisD['range'])
-        
+
         # cria um arranjo de diâmetros de particulas para integração
         diam = np.arange(np.min(EmisD['range']),np.max(EmisD['range'])+dx,dx)
-        
+
         # inicializa a variável FdustTotal que acumulará as estimativas para 
         # cada diâmetro
         FdustTotal=[]
-        
+
         # seleciona os valores dentro da faixa da fração ex-0 a 2.5 micrometros
         diamSelect = diam[(Dmin<=diam) & (Dmax>=diam)]
-        
+
         # loop em cada diâmetro
         for jj,diameters in enumerate(diamSelect):
-            
+
             print(diameters)
-            
+
             # executa a função soilPrep
             clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,
-                                      lat,lon,diameters,RESET_GRID)
-            
+                                      lat,lon,diameters,RESET_GRID,grids)
+
             # executa a função metPrep
             ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,
                                                           al,diameters,
-                                                          clayRegrid,lia)
-            
+                                                          clayRegrid,lia,
+                                                          lat_index,lon_index)
+
             # executa a função windBlowDustCalc
             Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
                                                 ustar,ustarT,ustarTd)
-            
+
             # já rodou uma vez, logo, não precisa resetar os arquivos 
             # intermediários
             RESET_GRID = False
-            
+
             # acumula os valores em cada diâmetro
             FdustTotal.append(Fdust)
-        
+
         # empilha os valores em um array numpy
         FdustTotal = np.stack(FdustTotal)
-        
+
         # estima a massa total de particulas dentro da faixa da fração
         # faz a integral dos dados estimados
         #FdustD = np.trapz(FdustTotal,dx=dx, axis=0)
-        
-        
+
+
         # faz a média do fluxo para cada diâmetro
         FdustD = np.nanmedian(FdustTotal, axis=0)   
-        
+
         # cria o netCDF com a estimativa das particulas
         ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',
                                       FdustD,datesTime.iloc[lia,:],
                                       mcipMETCRO3Dpath,EmisD)
-        
+
         # faz a especiação química das particulas
         if EmisD==PM25:
             FdustFINE = FdustD
@@ -247,7 +275,7 @@ if __name__ == '__main__':
             FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustCOARSE)
         else:
             print('You have selected an awkward fraction')
-        
+
         # se existir as parcelas PMFINE e PMC, calcula o PM10
         try:
             FdustPM10 = FdustFINE+FdustCOARSE
@@ -256,7 +284,7 @@ if __name__ == '__main__':
                                           mcipMETCRO3Dpath,PM10)
         except:
             print('You do not have the fractions required for PM10')   
-            
+
     
     # Acumula todas as estimativas de particulas sem especiação
     FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]

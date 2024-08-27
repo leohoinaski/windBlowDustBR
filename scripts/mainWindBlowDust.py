@@ -79,10 +79,10 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
 #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-mcipPath='/media/leohoinaski/HDD/MG_3km'
-#wrfoutFolder='/mnt/sdb1/MG_3km'
-#mcipPath='/mnt/sdb1/MG_3km'
+#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+#mcipPath='/media/leohoinaski/HDD/MG_3km'
+wrfoutFolder='/mnt/sdb1/MG_3km'
+mcipPath='/mnt/sdb1/MG_3km'
 
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
@@ -228,7 +228,7 @@ borderShape = gpd.read_file(shape_path)
 
 # ustar no espaço
 fig, ax = plt.subplots()
-pcm= ax.pcolor(lon,lat, np.nanmean(ustar[:, :, :].data,axis=0))
+pcm= ax.pcolor(lon[:-1,:-1],lat[:-1,:-1], np.nanmean(ustar[:, :, :],axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('ustar')
 ax.set_xlim([lon.min(),lon.max()])
@@ -246,7 +246,7 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
 
 # ustarWRF no espaço
 fig, ax = plt.subplots()
-ax.pcolor(lon,lat, np.nanmean(ustarWRF[:, :, :].data,axis=0))
+ax.pcolor(lon[:-1,:-1],lat[:-1,:-1], np.nanmean(ustarWRF[:, :, :].data,axis=0))
 pcm = borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('ustarWRF')
 ax.set_xlim([lon.min(),lon.max()])
@@ -263,7 +263,7 @@ ax.set_yticks([])
 
 # avWRF no espaço
 fig, ax = plt.subplots()
-pcm = ax.pcolor(lon,lat,np.nansum(avWRF,axis=0))
+pcm = ax.pcolor(lon[:-1,:-1],lat[:-1,:-1],np.nansum(avWRF,axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('avWRF')
 ax.set_xlim([lon.min(),lon.max()])
@@ -279,7 +279,7 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
 
 
 fig, ax = plt.subplots()
-pcm = ax.pcolor(lon,lat,sRef[:, :])
+pcm = ax.pcolor(lon[:-1,:-1],lat[:-1,:-1],sRef[:, :])
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('sRef')
 ax.set_xlim([lon.min(),lon.max()])
@@ -291,10 +291,10 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
                         #extend='both', 
                         #ticks=bounds,
                         #spacing='uniform',
-                        orientation='horizontal',)
+                        orientation='horizontal')
 
 fig, ax = plt.subplots()
-pcm = ax.pcolor(lon,lat,np.nansum(alarea[:,:, :],axis=0))
+pcm = ax.pcolor(lon[:-1,:-1],lat[:-1,:-1],np.nansum(alarea[:,:, :],axis=0))
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('alarea')
 ax.set_xlim([lon.min(),lon.max()])
@@ -310,7 +310,7 @@ cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
 
 
 fig, ax = plt.subplots()
-pcm = ax.pcolor(lon,lat,np.log(clayRegrid[0,:,:]))
+pcm = ax.pcolor(lon[:-1,:-1],lat[:-1,:-1],clayRegrid[0,:,:])
 borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
 ax.set_title('clayRegrid')
 ax.set_xlim([lon.min(),lon.max()])
