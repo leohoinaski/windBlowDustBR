@@ -161,49 +161,9 @@ if __name__ == '__main__':
     ds,datesTime,lia,domainShp,lat,lon,lat_index,lon_index,grids = grd.main(
         mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain)
     
-    # abre o arquivo METCROD3D
-    ds = nc.Dataset(mcipMETCRO3Dpath)
-    # Extrai as datas do arquivo do MCIP
-    datesTimeMCIP = ncCreate.datePrepCMAQ(ds)
-    
-    # Deinindo os arquivos do WRF que serão abertos. Devem ser compatíveis com 
-    # as datas do respectivo arquivo do MCIP. 
-    # file = [i for i in os.listdir(wrfoutFolder) if os.path.isfile(os.path.join(wrfoutFolder,i)) an>
-    #          'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]- timedelta(days=1)).year).zfill(4>
-    #              str((datesTimeMCIP.datetime[0]- timedelta(days=1)).month).zfill(2)+'-'+\
-    #                  str((datesTimeMCIP.datetime[0]- timedelta(days=1)).day).zfill(2) in i]
-    files=['wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]).year).zfill(4)+'-'+\
-                 str((datesTimeMCIP.datetime[0]).month).zfill(2)+'-'+\
-                     str((datesTimeMCIP.datetime[0]).day).zfill(2)+'_00:00:00',\
-           'wrfout_'+domain+'_'+str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).year).zfill(4)+'-'+\
-                 str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).month).zfill(2)+'-'+\
-                     str((datesTimeMCIP.datetime[0]+ timedelta(days=1)).day).zfill(2)+'_00:00:00']
-
-    # pega o caminho da pasta atual
-    cwd = os.getcwd()
-    
-    # move para a pasta do WRF
-    os.chdir(wrfoutFolder)
-    #wrfoutPath = wrfoutFolder+'/'+file[0]
-    wrfoutPath = wrfoutFolder+'/'+files[0]
-    
-    # abre os arquivos do WRF
-    ds = nc.MFDataset(files)
-    
-    # Volta para a pasta root do windblow/scripts
-    os.chdir(cwd)
-    
-    # extrai as datas dos arquivos do WRF que foram abertos
-    datesTime = ncCreate.datePrepWRF(pd.to_datetime(
-        wrf.extract_times(ds,wrf.ALL_TIMES)))
-    
-    # identifica datas coincidentes no MCIP e WRF
-    lia, loc = ismember.ismember(np.array(datesTime.datetime),
-                                 np.array(datesTimeMCIP.datetime))
-    print(datesTime.iloc[lia,:])
     
     # executa a função de regridMAPBIOMAS
-    av,al,alarea,lat,lon,domainShp = regMap.main(wrfoutPath,GDNAM,inputFolder,
+    av,al,alarea,lat,lon,domainShp = regMap.main(GDNAM,inputFolder,
                                                  outfolder,YEAR,idSoils,RESET_GRID,
                                                  grids,domainShp,lat,lon)
     
@@ -234,6 +194,7 @@ if __name__ == '__main__':
                                       lat,lon,diameters,RESET_GRID,grids)
 
             # executa a função metPrep
+            # ds,tablePath,av,al,D,clayRegrid,lia,lat_index,lon_index
             ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,
                                                           al,diameters,
                                                           clayRegrid,lia,
