@@ -25,11 +25,11 @@ import netCDFcreator as ncCreate
 import os
 import numpy as np
 #import geopandas as gpd
-import netCDF4 as nc
-import wrf
-import pandas as pd
-from datetime import timedelta
-import ismember
+#import netCDF4 as nc
+#import wrf
+#import pandas as pd
+#from datetime import timedelta
+#import ismember
 import windBlowDustSpeciation as wbds
 import gridDetails as grd
 
