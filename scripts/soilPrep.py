@@ -163,13 +163,15 @@ def rasterInGrid(domainShp,raster,x,y,lat,lon,grids):
     clay=[]
     for index, row in gdf.iterrows():
         print(index)
-        clipped = clippedRaster.rio.clip(gpd.GeoDataFrame(index=[0], crs="EPSG:4326",geometry=[row.geometry]).geometry)
-        clipped = np.array(clipped)
-        if clipped.shape[0]>0:
-           clay.append(np.nanmean(clipped))
-        else:
-           clay.append(np.nan)
-
+        try:
+            clipped = clippedRaster.rio.clip(gpd.GeoDataFrame(index=[0], crs="EPSG:4326",geometry=[row.geometry]).geometry)
+            clipped = np.array(clipped)
+            if clipped.shape[0]>0:
+               clay.append(np.nanmean(clipped))
+            else:
+               clay.append(np.nan)
+        except:
+            clay.append(np.nan)
     
     # fazendo o rashape
     matRegrid[:,:] = np.array(clay).reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose() 
