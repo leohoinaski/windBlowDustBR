@@ -17,9 +17,34 @@ especiação do material particulado emitido pelo solo.
 
 import pandas as pd
 import numpy as np
+import geopandas as gpd
 
+def contribution_areas(grids,lat,lon):
+    
+    # abrindo o shp com regioes com ferro
+    shp_iron = gpd.read_file('/home/lcqar/MMA/windBlowDustBR/mnt/sdb1/inputs/MiningBR/BRASIL.shp')
+    shp_iron = shp_iron[shp_iron['SUBS'].isin(['FERRO', 'MINÉRIO DE FERRO'])]
+    shp_iron = gpd.GeoDataFrame(geometry=[shp_iron.unary_union], crs=shp_iron.crs)
+        
+    # cria um gdf com os grids
+    df = pd.DataFrame({'geometry':grids})
+    gdf = gpd.GeoDataFrame(df, crs=shp_iron.crs)
+    gdf.set_geometry('geometry', inplace=True)
+    
+    # calcula a porcentagem da área coberta
+    gdf['prct_iron'] = gdf.geometry.intersection(shp_iron.geometry.iloc[0]).area / gdf.geometry.area
+        
+    array_iron = gdf['prct_iron'].to_numpy().reshape((lat.shape[1]-1,lon.shape[0]-1)).transpose()
+    
+    contribution = np.zeros((2,lat.shape[0]-1, lon.shape[1]-1))
+    
+    contribution[0,:,:] = array_iron
+    
+    contribution[1,:,:] = 1-array_iron
+    
+    return contribution
 
-def speciate(windBlowDustFolder,FdustD):
+def speciate(windBlowDustFolder,FdustD,grids,lat,lon,contribution):
     """
     função para a especiação química das emissões do windblowdust
 
@@ -36,9 +61,10 @@ def speciate(windBlowDustFolder,FdustD):
         matriz com as emissões especiadas.
 
     """
+    
     print('=====STARTING windBlowDustSpeciation.py=====' )
     # abrindo csv com os perfis de especiação 
-    spc = pd.read_csv(windBlowDustFolder+'/inputs/tables/weigth_perc_PM_CMAQ.csv')
+    spc = pd.read_csv(windBlowDustFolder+'/inputs/tables/weigth_perc_PM_All_CMAQ.csv')
     
     # usa todas as linhas que não tiver null
     spc = spc[~spc['SPECIES_NAME'].isnull()]
@@ -46,12 +72,15 @@ def speciate(windBlowDustFolder,FdustD):
     # inicializa a matriz com as emissões especiadas
     FdustDNew = np.zeros([FdustD.shape[0],spc.shape[0],FdustD.shape[1],FdustD.shape[2]]) 
     
+    if type(contribution) == list:
+        contribution = contribution_areas(grids,lat,lon)
+    
     # loop para cada espécie
     for index, row in spc.iterrows():
         
-        print(index)
         # preenchendo a matriz
-        FdustDNew[:,index,:,:] = FdustD*row['WP_MEAN']/100
+        FdustDNew[:,index,:,:] = np.sum([contribution[0,:,:]*FdustD*row['WP_MEAN_Fe']/100,
+                                         contribution[1,:,:]*FdustD*row['WP_MEAN_C']/100])
         
-        
-    return FdustDNew
+    return FdustDNew, contribution
+

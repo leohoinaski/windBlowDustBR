@@ -32,6 +32,11 @@ from rasterio.enums import Resampling
 from shapely.geometry import Polygon
 import rasterio
 import geopandas as gpd
+from scipy.stats import lognorm
+from dask.distributed import Client
+
+client = Client(memory_limit='4GB',n_workers=4)
+
 
 
 def rasterLatLon(raster):
@@ -89,10 +94,14 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
 
     """
     
-   # print('Starting cutSoil function - windBlowDust')
+    # print('Starting cutSoil function - windBlowDust')
     
     # Abrindo arquivo com o teor de argila
-    raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif')
+    #raster = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_30-60cm_pred_g_kg.tif', chunks={'x': 1024, 'y': 1024})
+    raster_5 = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_0_5cm_pred_g_kg.tif', chunks={'x': 256, 'y': 256})
+    raster_15 = riox.open_rasterio(inputFolder+'/br_clay_content_30-60cm_pred_g_kg/br_clay_content_5_15cm_pred_g_kg.tif', chunks={'x': 256, 'y': 256})
+    
+    raster = (raster_5/3+raster_15*2/3)*3
     
     # Reduzindo a dimensão do raster 1/5
     downscale_factor = 1/5
@@ -102,8 +111,8 @@ def cutSoil(domainShp,inputFolder,outfolder,GRDNAM):
     new_height = raster.rio.height * downscale_factor
     
     # faz o downscaling
-    raster = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), 
-                                                         int(new_width)), 
+    raster_reprojected = raster.rio.reproject(raster.rio.crs, shape=(int(new_height), 
+                                                         int(new_width)),
                                   resampling=Resampling.bilinear)
     
     # VERIFICAR!!! conversão da unidade de g/kg para % 
@@ -354,22 +363,24 @@ def soilType(inputFolder,outfolder,lat,lon,D,GDNAM):
         # proporção acumulada de particulas em cada diametro
         ys=soilDist['P']
         
-        # função para fitar a curva de granulometrica acumulada
-        f = lambda x,mu,sigma: stats.norm(mu,sigma).cdf(x)
+        # função para fitar a curva logística acumulada
+        f = lambda xs, a, b, e, g: b + (a - b) / (1 + (xs/e)**g)
         
-        # encontrando o mu e sigma da curva
-        mu,sigma = optimize.curve_fit(f,xs,ys/100)[0]
+        # fitando a curva
+        a, b, e, g = optimize.curve_fit(f, xs, ys / 100)[0]
         
-        # valores de diâmetros de 0 a 800 micrometros para usar na funçaõ fitada
-        xx = np.arange(0,800,0.01)
+        # valores de diâmetros de 0 ao maior diametro em micrometros para usar na funçaõ fitada
+        xx = np.arange(0,800,0.1)
+        
+        yy = f(xx,a,b,e,g)
         
         # derivada da curva acumulada, ou seja, o valor de porcentagem de um 
         # determinado diametro. 
-        deriv = np.append(np.nan,np.diff(f(xx,mu,sigma)*100))
+        deriv = np.append(np.nan,np.diff(f(xx, a, b, e, g)*100))
         
         # indice da matriz que possui o determinado diâmetro
         idx = find_nearest(xx, D)
-        
+                
         # estabelece o valor de porcentagem para um determinado diametro na matriz
         # com o mesmo tamanho do dominio
         sRef[raster[0,:,:].astype(int)==kk+1]=deriv[idx]

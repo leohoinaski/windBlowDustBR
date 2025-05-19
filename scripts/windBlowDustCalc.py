@@ -73,7 +73,7 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     # ===================CUIDADO!!!!
     # https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010JD014649
     p = 10000 # asumi - montar matriz de Plastic pressure com base no solo
-    rob = 1300# kg/m³ - assumi - montar matriz de densidades
+    rob = 1300 # kg/m³ - assumi - montar matriz de densidades
     rop = 2600 # kg/m³ assumi - montar matriz de densidades
     
     # Usado para verificação da equação
@@ -96,7 +96,7 @@ def wbdFlux(avWRF,alarea,sRef,clayRegrid,ustarWRF,ustarT,ustarTd):
     print('ustarT<ustarWRF npixels = ' + str(np.nansum(ustarT<ustarWRF)))
     
     # estimativa do fluxo horizontal total - acredito que esteja em g/ms
-    Fhtot = Fhd*sRef*10**6 # transforma para microgramas
+    Fhtot = Fhd*sRef*10**6*10**-2 # transforma para microgramas e divide a porcentagem por 100
     print('Fhtot max = ' + str(np.nanmax(Fhtot)))
     print('Fhtot npixels = ' + str(np.nansum(Fhtot>0)))
     

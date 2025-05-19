@@ -444,11 +444,11 @@ def main(GDNAM,inputFolder,outfolder,year,idSoils,RESET_GRID,
             #domainShp,lat,lon =  createDomainShp(wrfoutPath,lialon,lialat)
             
             # ABre o arquivo já criado
-            ds = nc.Dataset(outfolder+'/regridMAPBIOMAS_'+str(year)+'_'+GDNAM+'.nc')
+            ds = nc.Dataset('/home/lcqar/MMA/windBlowDustBR/mnt/sdb1/Outputs/Con_3km/regridMAPBIOMAS_2023_Con_3km.nc')
             
             # Abre a matriz de MAT, sendo o indice 0 = a e 1 = al e o resto é alarea
-            al= ds['MAT'][0,:,:] 
-            av= ds['MAT'][1,:,:] 
+            al= ds['MAT'][0,:,:]
+            av= ds['MAT'][1,:,:]
             
             # o arquivo de alarea tem 3d e a primeira dimensão é o idSoil
             alarea= ds['MAT'][2:,:,:] 

@@ -30,9 +30,9 @@ import numpy as np
 #import pandas as pd
 #from datetime import timedelta
 #import ismember
+#import pickle
 import windBlowDustSpeciation as wbds
 import gridDetails as grd
-
 
 # Dicionários de poluentes
 PM25 = {
@@ -67,10 +67,11 @@ ALL = {
 
 # Inputs
 domain = 'd02'
-GDNAM = 'MG_3km'
+YYYYMMDD = '2023-01-01'
+GDNAM = 'Con_3km_'+YYYYMMDD
 RESET_GRID = False
-year = 2021
-
+year = 2023
+contribution = []
 
 # Definindo o caminho para as pastas
 rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
@@ -81,9 +82,8 @@ rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
 #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
 #wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
 #mcipPath='/media/leohoinaski/HDD/MG_3km'
-wrfoutFolder='/mnt/sdb1/MG_3km'
-mcipPath='/mnt/sdb1/MG_3km'
-
+wrfoutFolder='/home/artaxo/congonhas/WRF/2023/tudo'
+mcipPath='/home/artaxo/CMAQ_REPOv5.4/data/mcip/Con_3km'
 
 mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
 mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'.nc'
@@ -124,7 +124,7 @@ av,al,alarea,lat,lon,domainShp = regMap.main(GDNAM,inputFolder,
                                              grids,domainShp,lat,lon)
 
 # loop para cada fração do PM
-for EmisD  in Fractions:
+for EmisD in Fractions:
     
     # determina os ranges das particulas - min e max
     Dmax = np.max(EmisD['range'])
@@ -170,10 +170,10 @@ for EmisD  in Fractions:
     
     # estima a massa total de particulas dentro da faixa da fração
     # faz a integral dos dados estimados
-    #FdustD = np.trapz(FdustTotal,dx=dx, axis=0)   
+    FdustD = np.nansum(FdustTotal, axis=0)   
     
     # faz a média do fluxo para cada diâmetro
-    FdustD = np.nanmedian(FdustTotal, axis=0)   
+    #FdustD = np.nanmedian(FdustTotal, axis=0)   
     print(FdustD.shape)
     print(np.nanmax(FdustD))
     
@@ -185,10 +185,10 @@ for EmisD  in Fractions:
     if EmisD==PM25:
         FdustFINE = FdustD
         print('FdustFINE max: '+str(FdustFINE.max()))
-        FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
+        FdustFINESpec, contribution = wbds.speciate(windBlowDustFolder, FdustFINE, grids, lat, lon, contribution)
     elif EmisD==PMC:
         FdustCOARSE = FdustD
-        FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustCOARSE)
+        FdustCOARSEpec, contribution = wbds.speciate(windBlowDustFolder, FdustCOARSE, grids, lat, lon, contribution)
         print('FdustCOARSE max: '+str(FdustCOARSE.max()))
     else:
         print('You have selected an awkward fraction')
@@ -203,16 +203,17 @@ for EmisD  in Fractions:
         
 # Acumula todas as estimativas de particulas sem especiação        
 FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
-FdustALL = np.stack(FdustALL,axis=0)
+FdustALL = np.stack(FdustALL)
+FdustALL = np.nansum(FdustALL, axis=0)   
 print('FdustALL max: '+str(FdustALL.max()))
-
-# cria o netCDF com todas as especies de particulas/frações
-ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
-                              datesTime[lia],mcipMETCRO3Dpath,ALL)
 
 # soma as emissões de cada especie no PM25 e PMC
 FdustSpeciated = FdustFINESpec + FdustCOARSEpec
 print('FdustSpeciated max: '+str(FdustSpeciated.max()))
+
+# cria o netCDF com todas as especies de particulas/frações
+ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
+                              datesTime[lia],mcipMETCRO3Dpath,ALL)
 
 # cria o netCDF especiado
 ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,

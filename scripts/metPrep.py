@@ -150,7 +150,7 @@ def roughness(tablePath,avWRF):
     z0 = np.array(z0)
     return z0,alphaV,alphaS
 
-def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF):
+def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF,z0):
     """
     Esta função calcula o limiar que define quando vai ocorrer a ressuspensão, 
     com base na velocidade frictiva ustarThreshold. 
@@ -248,15 +248,27 @@ def ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF):
     # print(t4.max())
 
     #===========================VERIFICAR!!!
-    fr = (t1*t2*t3*t4)**0.5
-    # print(fr.max())
+    #fr = (t1*t2*t3*t4)**0.5
+    
+    #fr =1
+    
+    #z0s = 3*10**-3
+    
+    #z0s de acordo com artigo, em função da mediana do diametro da areia https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/96JD02964
+    z0s = 435*10**-4
+    
+    fr = (1-np.log(z0/z0s)/(1-np.log(0.7*(12255/z0s)**0.8)))**(-1)
+    
+    #fr = 1
+    
     # Referência do fr = https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2010JD014649
     #fr2 = ((1-sigmaS*mS*(alphaS/(1-av)))*(1+betaS*mS*(alphaS/(1-av))))**0.5 # ref = )
     
     # Estimativa do threshold
-    #ustarT=ustarTd*np.array(fm)*np.array(fr)
+    # ustarT=ustarTd*np.array(fm)*np.array(fr)
+    ustarT=ustarTd*np.array(fm)*np.array(fr)
     # considerando apenas a correção pela umidade
-    ustarT=ustarTd*np.array(fm)
+    #ustarT=ustarTd*np.array(fm)
     ustarT = np.array(ustarT)
     
     return ustarT,ustarTd
@@ -321,7 +333,7 @@ def main(ds,tablePath,av,al,D,clayRegrid,lia,lat_index,lon_index):
     w = w[:,:-1,:-1]
     
     # estimando ustarT e ustarTd de acordo com o artigo
-    ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF)
+    ustarT,ustarTd = ustarThreshold(D,clayRegrid,w,alphaV,alphaS,avWRF,z0)
     print('ustarT max=' + str(ustarT.max()) )
     print('ustarT min=' + str(ustarT.min()) )
     print('ustarTd npixels=' + str(np.nansum(ustarT>0)) )

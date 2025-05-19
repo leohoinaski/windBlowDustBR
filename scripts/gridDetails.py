@@ -196,6 +196,7 @@ def main(mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain):
     # extrai as datas dos arquivos do WRF que foram abertos
     datesTime = ncCreate.datePrepWRF(pd.to_datetime(wrf.extract_times(ds,
                                                                       wrf.ALL_TIMES)))
+    #datesTime = pd.to_datetime(ds['Time'].values)
     
     # identifica datas coincidentes no MCIP e WRF
     #print(datesTime.shape)
