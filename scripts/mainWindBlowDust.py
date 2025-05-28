@@ -33,192 +33,265 @@ import numpy as np
 #import pickle
 import windBlowDustSpeciation as wbds
 import gridDetails as grd
-
-# Dicionários de poluentes
-PM25 = {
-  "Unit": '$\g.S^{-1}$',
-  "tag":'PMFINE',
-  "range":[0,2.5] # micrometers
-}
-
-PMC = {
-  "Unit": '$\g.S^{-1}$',
-  "tag":'PMC',
-  "range":[2.5,10] # micrometers
-}
-
-PM10 = {
-  "Unit": '$\g.S^{-1}$',
-  "tag":'PM10',
-  "range":[0,10] # micrometers
-}
-
-PM1 = {
-  "Unit": '$\g.S^{-1}$',
-  "tag":'PMULTRAFINE',
-  "range":[0,1] # micrometers
-}
-
-ALL = {
-  "Unit": '$\g.S^{-1}$',
-  "tag":'AllFractions',
-  "fractions":['PMFINE','PMC','PM10'] # micrometers
-}
-
-# Inputs
-domain = 'd02'
-YYYYMMDD = '2023-01-01'
-GDNAM = 'Con_3km_'+YYYYMMDD
-RESET_GRID = False
-year = 2023
 contribution = []
 
-# Definindo o caminho para as pastas
-rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
+lista_fdust=[]
+lista_fdust_speciated=[]    
 
-#wrfoutFolder = rootFolder+'/BR_2019'
-#wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
-#wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
-#mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
-#wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
-#mcipPath='/media/leohoinaski/HDD/MG_3km'
-wrfoutFolder='/home/artaxo/congonhas/WRF/2023/tudo'
-mcipPath='/home/artaxo/CMAQ_REPOv5.4/data/mcip/Con_3km'
-
-mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'.nc'
-mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'.nc'
-windBlowDustFolder = os.path.dirname(os.getcwd())
-#wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
-#mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
-
-inputFolder = os.path.dirname(os.getcwd())+'/inputs'
-tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
-outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GDNAM
-
-# Definição dos ids do MAPBIOMAS que serão utilizados na estimativa 
-# das emissões no windblowdust
-idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
-
-# espaçamento entre diâmetros para integração dos valores
-dx = 0.1
-
-# frações que serão calculadas
-Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
-                        #Não precisa incluir o PM10 se já tiver PM25 e PM10
-
-# condição para verificar se a pasta de output existe
-if os.path.isdir(outfolder):
-    print('You have the outputs folder')
-else:
-    os.makedirs(outfolder, exist_ok=True)
-
-
-# Grid setup
-ds,datesTime,lia,domainShp,lat,lon,lat_index,lon_index,grids = grd.main(
-    mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain)
-
-
-# Regrid MAPBIOMAS
-av,al,alarea,lat,lon,domainShp = regMap.main(GDNAM,inputFolder,
-                                             outfolder,year,idSoils,RESET_GRID,
-                                             grids,domainShp,lat,lon)
-
-# loop para cada fração do PM
-for EmisD in Fractions:
-    
-    # determina os ranges das particulas - min e max
-    Dmax = np.max(EmisD['range'])
-    Dmin = np.min(EmisD['range'])
-    
-    # cria um arranjo de diâmetros de particulas para integração
-    diam = np.arange(np.min(EmisD['range']),np.max(EmisD['range'])+dx,dx)
-    
-    # inicializa a variável FdustTotal que acumulará as estimativas para 
-    # cada diâmetro
-    FdustTotal=[]
-    
-    # seleciona os valores dentro da faixa da fração ex-0 a 2.5 micrometros
-    diamSelect = diam[(Dmin<=diam) & (Dmax>=diam)]
-    
-    # loop em cada diâmetro
-    for jj,diameters in enumerate(diamSelect):
-        
-        print(diameters)
-        
-        # executa a função soilPrep
-        clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,
-                                  lat,lon,diameters,RESET_GRID,grids)
-        
-        # executa a função metPrep
-        ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,
-                                                      diameters,clayRegrid,lia,
-                                                      lat_index,lon_index)
-        
-        # executa a função windBlowDustCalc
-        Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
-                                            ustar,ustarT,ustarTd)
-        
-        # já rodou uma vez, logo, não precisa resetar os arquivos 
-        # intermediários
-        RESET_GRID = False
-        
-        # acumula os valores em cada diâmetro
-        FdustTotal.append(Fdust)
-    
-    # empilha os valores em um array numpy
-    FdustTotal = np.stack(FdustTotal)
-    
-    # estima a massa total de particulas dentro da faixa da fração
-    # faz a integral dos dados estimados
-    FdustD = np.nansum(FdustTotal, axis=0)   
-    
-    # faz a média do fluxo para cada diâmetro
-    #FdustD = np.nanmedian(FdustTotal, axis=0)   
-    print(FdustD.shape)
-    print(np.nanmax(FdustD))
-    
-    # cria o netCDF com a estimativa das particulas
-    ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,
-                                  datesTime[lia],mcipMETCRO3Dpath,EmisD)
-    
-    # faz a especiação química das particulas
-    if EmisD==PM25:
-        FdustFINE = FdustD
-        print('FdustFINE max: '+str(FdustFINE.max()))
-        FdustFINESpec, contribution = wbds.speciate(windBlowDustFolder, FdustFINE, grids, lat, lon, contribution)
-    elif EmisD==PMC:
-        FdustCOARSE = FdustD
-        FdustCOARSEpec, contribution = wbds.speciate(windBlowDustFolder, FdustCOARSE, grids, lat, lon, contribution)
-        print('FdustCOARSE max: '+str(FdustCOARSE.max()))
+for mes in range(12):
+    if mes in [0,2,4,6,7,9,11]:
+        dias = 31
+    elif mes in [3,5,8,10]:
+        dias = 30
     else:
-        print('You have selected an awkward fraction')
-    
-    # se existir as parcelas PMFINE e PMC, calcula o PM10
-    try:
-        FdustPM10 = FdustFINE+FdustCOARSE
-        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustPM10,
-                                      datesTime[lia],mcipMETCRO3Dpath,PM10)
-    except:
-        print('You do not have the fractions required for PM10')   
+        dias = 29
         
-# Acumula todas as estimativas de particulas sem especiação        
-FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
-FdustALL = np.stack(FdustALL)
-FdustALL = np.nansum(FdustALL, axis=0)   
-print('FdustALL max: '+str(FdustALL.max()))
+    for dia in range(dias):
+    
+        # Dicionários de poluentes
+        PM25 = {
+          "Unit": '$\g.S^{-1}$',
+          "tag":'PMFINE',
+          "range":[0,2.5] # micrometers
+        }
+        
+        PMC = {
+          "Unit": '$\g.S^{-1}$',
+          "tag":'PMC',
+          "range":[2.5,10] # micrometers
+        }
+        
+        PM10 = {
+          "Unit": '$\g.S^{-1}$',
+          "tag":'PM10',
+          "range":[0,10] # micrometers
+        }
+        
+        PM1 = {
+          "Unit": '$\g.S^{-1}$',
+          "tag":'PMULTRAFINE',
+          "range":[0,1] # micrometers
+        }
+        
+        ALL = {
+          "Unit": '$\g.S^{-1}$',
+          "tag":'AllFractions',
+          "fractions":['PMFINE','PMC','PM10'] # micrometers
+        }
+        
+        # Inputs
+        domain = 'd02'
+        YYYYMMDD = '2023-'+str(mes+1).zfill(2)+'-'+str(dia+1).zfill(2)
+        GDNAM = 'Con_3km'
+        RESET_GRID = False
+        year = 2023
+        
+        # Definindo o caminho para as pastas
+        rootFolder =  os.path.dirname(os.path.dirname(os.getcwd()))
+        
+        #wrfoutFolder = rootFolder+'/BR_2019'
+        #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+        #wrfoutFolder='/home/WRFout/share/Congonhas/2021/d02'
+        #mcipPath='/home/artaxo/CMAQ_REPO/data/mcip/'+GDNAM
+        #wrfoutFolder='/media/leohoinaski/HDD/MG_3km'
+        #mcipPath='/media/leohoinaski/HDD/MG_3km'
+        wrfoutFolder='/home/artaxo/congonhas/WRF/2023/tudo'
+        mcipPath='/home/artaxo/CMAQ_REPOv5.4/data/mcip/Con_3km'
+        #wrfoutFolder='/home/lcqar/MMA/windBlowDustBR/mnt/sdb1/Con_3km'
+        #mcipPath='/home/lcqar/MMA/windBlowDustBR/mnt/sdb1/Con_3km'
+        
+        mcipMETCRO3Dpath = mcipPath+'/METCRO3D_'+GDNAM+'_'+YYYYMMDD+'.nc'
+        mcipGRIDDOT2Dpath = mcipPath+'/GRIDDOT2D_'+GDNAM+'_'+YYYYMMDD+'.nc'
+        windBlowDustFolder = os.path.dirname(os.getcwd())
+        #wrfoutFolder='/home/lcqar/CMAQ_REPO/data/WRFout/BR/WRFd01_BR_20x20'
+        #mcipMETCRO3Dpath ='/home/lcqar/CMAQ_REPO/data/mcip/BR_2019/METCRO3D_BR_2019.nc'
+        
+        inputFolder = os.path.dirname(os.getcwd())+'/inputs'
+        tablePath = os.path.dirname(os.getcwd())+'/inputs/tables'
+        outfolder = os.path.dirname(os.getcwd())+'/Outputs/'+GDNAM
+        
+        # Definição dos ids do MAPBIOMAS que serão utilizados na estimativa 
+        # das emissões no windblowdust
+        idSoils = [23,30,25] #4.1. Praia, Duna e Areal  4.3. Mineração 4.4. Outras Áreas não Vegetadas
+        
+        # espaçamento entre diâmetros para integração dos valores
+        dx = 0.1
+        
+        # frações que serão calculadas
+        Fractions = [PM25,PMC] # Lista com tipo de emissão por diâmetro. 
+                                #Não precisa incluir o PM10 se já tiver PM25 e PM10
+        
+        # condição para verificar se a pasta de output existe
+        if os.path.isdir(outfolder):
+            print('You have the outputs folder')
+        else:
+            os.makedirs(outfolder, exist_ok=True)
+        
+        
+        # Grid setup
+        ds,datesTime,lia,domainShp,lat,lon,lat_index,lon_index,grids = grd.main(
+            mcipMETCRO3Dpath,mcipGRIDDOT2Dpath,wrfoutFolder,domain)
+        
+        
+        # Regrid MAPBIOMAS
+        av,al,alarea,lat,lon,domainShp = regMap.main(GDNAM,inputFolder,
+                                                     outfolder,year,idSoils,RESET_GRID,
+                                                     grids,domainShp,lat,lon)
+        
+        # loop para cada fração do PM
+        for EmisD in Fractions:
+            
+            # determina os ranges das particulas - min e max
+            Dmax = np.max(EmisD['range'])
+            Dmin = np.min(EmisD['range'])
+            
+            # cria um arranjo de diâmetros de particulas para integração
+            diam = np.arange(np.min(EmisD['range']),np.max(EmisD['range'])+dx,dx)
+            
+            # inicializa a variável FdustTotal que acumulará as estimativas para 
+            # cada diâmetro
+            FdustTotal=[]
+            
+            # seleciona os valores dentro da faixa da fração ex-0 a 2.5 micrometros
+            diamSelect = diam[(Dmin<=diam) & (Dmax>=diam)]
+            
+            # loop em cada diâmetro
+            for jj,diameters in enumerate(diamSelect):
+                
+                print(diameters)
+                
+                # executa a função soilPrep
+                clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,
+                                          lat,lon,diameters,RESET_GRID,grids)
+                
+                # executa a função metPrep
+                ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,
+                                                              diameters,clayRegrid,lia,
+                                                              lat_index,lon_index)
+                
+                # executa a função windBlowDustCalc
+                Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
+                                                    ustar,ustarT,ustarTd)
+                
+                # já rodou uma vez, logo, não precisa resetar os arquivos 
+                # intermediários
+                RESET_GRID = False
+                
+                # acumula os valores em cada diâmetro
+                FdustTotal.append(Fdust)
+            
+            # empilha os valores em um array numpy
+            FdustTotal = np.stack(FdustTotal)
+            
+            # estima a massa total de particulas dentro da faixa da fração
+            # faz a integral dos dados estimados
+            FdustD = np.nansum(FdustTotal, axis=0)   
+            
+            # faz a média do fluxo para cada diâmetro
+            #FdustD = np.nanmedian(FdustTotal, axis=0)   
+            print(FdustD.shape)
+            print(np.nanmax(FdustD))
+            
+            # cria o netCDF com a estimativa das particulas
+            ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,
+                                          datesTime[lia],mcipMETCRO3Dpath,EmisD)
+            
+            # faz a especiação química das particulas
+            if EmisD==PM25:
+                FdustFINE = FdustD
+                print('FdustFINE max: '+str(FdustFINE.max()))
+                FdustFINESpec, contribution = wbds.speciate(windBlowDustFolder, FdustFINE, grids, lat, lon, contribution)
+            elif EmisD==PMC:
+                FdustCOARSE = FdustD
+                FdustCOARSEpec, contribution = wbds.speciate(windBlowDustFolder, FdustCOARSE, grids, lat, lon, contribution)
+                print('FdustCOARSE max: '+str(FdustCOARSE.max()))
+            else:
+                print('You have selected an awkward fraction')
+            
+            # se existir as parcelas PMFINE e PMC, calcula o PM10
+            try:
+                FdustPM10 = FdustFINE+FdustCOARSE
+                ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustPM10,
+                                              datesTime[lia],mcipMETCRO3Dpath,PM10)
+            except:
+                print('You do not have the fractions required for PM10')   
+                
+        # Acumula todas as estimativas de particulas sem especiação        
+        FdustALL = [FdustFINE,FdustCOARSE]
+        FdustALL = np.stack(FdustALL)
+        FdustALL = np.nansum(FdustALL, axis=0)   
+        print('FdustALL max: '+str(FdustALL.max()))
+        
+        lista_fdust.append(FdustALL)
+        
+        # soma as emissões de cada especie no PM25 e PMC
+        FdustSpeciated = FdustFINESpec + FdustCOARSEpec
+        print('FdustSpeciated max: '+str(FdustSpeciated.max()))
+        
+        lista_fdust_speciated.append(FdustSpeciated)
+        
+        # cria o netCDF com todas as especies de particulas/frações
+        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
+                                      datesTime[lia],mcipMETCRO3Dpath,ALL)
+        
+        # cria o netCDF especiado
+        ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
+                                               'windBlowDust_',FdustSpeciated,
+                                               datesTime[lia],mcipMETCRO3Dpath)
 
-# soma as emissões de cada especie no PM25 e PMC
-FdustSpeciated = FdustFINESpec + FdustCOARSEpec
-print('FdustSpeciated max: '+str(FdustSpeciated.max()))
+fdust = lista_fdust[0]
+fdust_speciate = lista_fdust_speciated[0]
 
-# cria o netCDF com todas as especies de particulas/frações
-ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
-                              datesTime[lia],mcipMETCRO3Dpath,ALL)
+#%% TESTES
 
-# cria o netCDF especiado
-ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
-                                       'windBlowDust_',FdustSpeciated,
-                                       datesTime[lia],mcipMETCRO3Dpath)
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import geopandas as gpd
+shape_path= '/home/lcqar/Congonhas/E04/shapefiles/congonhas.shp'
+borderShape = gpd.read_file(shape_path)
+
+fdust_fe = np.sum(np.array(lista_fdust_speciated), axis=0)
+fdust_fe = fdust_fe[:,4,:,:]
+fdust_tot = np.sum(np.array(lista_fdust), axis=0)
+
+fdust_fe = np.nansum(fdust_fe[:,:,:],axis=0)
+fdust_tot = np.nansum(fdust_tot[:,:,:],axis=0)
+
+fig, ax = plt.subplots()
+pcm = ax.pcolor(lon,lat,fdust_fe/fdust_tot,cmap='jet')
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+cbar.ax.set_xlabel('PMFe/PMTotal', rotation=0,fontsize=8)
+ax.set_frame_on(False)
+cbar.ax.tick_params(labelsize=6) 
+fig.tight_layout()
+#ax.set_title('FdustD')
+
+fig, ax = plt.subplots()
+pcm = ax.pcolor(lon,lat,100*contribution[1,:,:],cmap='jet')
+borderShape.boundary.plot(edgecolor='black',linewidth=0.5,ax=ax)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlim([lon.min(),lon.max()])
+ax.set_ylim([lat.min(),lat.max()])
+cbar = fig.colorbar(pcm, ax=ax,fraction=0.04, pad=0.02,
+                        #extend='both', 
+                        #ticks=bounds,
+                        #spacing='uniform',
+                        orientation='horizontal',)
+cbar.ax.set_xlabel('Porcentagem ferro', rotation=0,fontsize=8)
+ax.set_frame_on(False)
+cbar.ax.tick_params(labelsize=6) 
+fig.tight_layout()
+#ax.set_title('FdustD')
 
 #%%
 import matplotlib.pyplot as plt

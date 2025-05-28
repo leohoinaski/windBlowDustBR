@@ -38,9 +38,9 @@ def contribution_areas(grids,lat,lon):
     
     contribution = np.zeros((2,lat.shape[0]-1, lon.shape[1]-1))
     
-    contribution[0,:,:] = array_iron
+    contribution[0,:,:] = 1-array_iron
     
-    contribution[1,:,:] = 1-array_iron
+    contribution[1,:,:] = array_iron
     
     return contribution
 
@@ -78,9 +78,13 @@ def speciate(windBlowDustFolder,FdustD,grids,lat,lon,contribution):
     # loop para cada espécie
     for index, row in spc.iterrows():
         
-        # preenchendo a matriz
-        FdustDNew[:,index,:,:] = np.sum([contribution[0,:,:]*FdustD*row['WP_MEAN_Fe']/100,
-                                         contribution[1,:,:]*FdustD*row['WP_MEAN_C']/100])
+        lista_tipos = []
+        
+        for type_mine in range(contribution.shape[0]):
+            
+            lista_tipos.append(contribution[type_mine,:,:]*FdustD*(row[type_mine+7]/100))                                 
+            
+        FdustDNew[:,index,:,:] = np.nansum(np.stack(lista_tipos), axis=0)  
         
     return FdustDNew, contribution
 
