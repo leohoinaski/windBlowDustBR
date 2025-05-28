@@ -57,6 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('RESET_GRID', type=int) # 0 OU 1
     parser.add_argument('YYYYMMDD')
     args = parser.parse_args()
+    contribution = []
     
     # passando os argumentos para variáveis
     windBlowDustFolder = args.windBlowDustFolder
@@ -188,83 +189,79 @@ if __name__ == '__main__':
         for jj,diameters in enumerate(diamSelect):
 
             print(diameters)
-
+            
             # executa a função soilPrep
             clayRegrid,sRef = sp.main(inputFolder,outfolder,domainShp,GDNAM,
                                       lat,lon,diameters,RESET_GRID,grids)
-
+            
             # executa a função metPrep
-            # ds,tablePath,av,al,D,clayRegrid,lia,lat_index,lon_index
-            ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,
-                                                          al,diameters,
-                                                          clayRegrid,lia,
+            ustar,ustarT,ustarTd,avWRF,ustarWRF = mp.main(ds,tablePath,av,al,
+                                                          diameters,clayRegrid,lia,
                                                           lat_index,lon_index)
-
+            
             # executa a função windBlowDustCalc
             Fdust,Fhd,Fhtot,Fvtot = wbd.wbdFlux(avWRF,alarea,sRef,clayRegrid,
                                                 ustar,ustarT,ustarTd)
-
+            
             # já rodou uma vez, logo, não precisa resetar os arquivos 
             # intermediários
             RESET_GRID = False
-
+            
             # acumula os valores em cada diâmetro
             FdustTotal.append(Fdust)
 
         # empilha os valores em um array numpy
         FdustTotal = np.stack(FdustTotal)
-
+        
         # estima a massa total de particulas dentro da faixa da fração
         # faz a integral dos dados estimados
-        #FdustD = np.trapz(FdustTotal,dx=dx, axis=0)
-
-
+        FdustD = np.nansum(FdustTotal, axis=0)   
+        
         # faz a média do fluxo para cada diâmetro
-        FdustD = np.nanmedian(FdustTotal, axis=0)   
-
+        #FdustD = np.nanmedian(FdustTotal, axis=0)   
+        print(FdustD.shape)
+        print(np.nanmax(FdustD))
+        
         # cria o netCDF com a estimativa das particulas
-        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',
-                                      FdustD,datesTime.iloc[lia,:],
-                                      mcipMETCRO3Dpath,EmisD)
-
+        ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustD,
+                                      datesTime[lia],mcipMETCRO3Dpath,EmisD)
+        
         # faz a especiação química das particulas
         if EmisD==PM25:
             FdustFINE = FdustD
-            FdustFINESpec = wbds.speciate(windBlowDustFolder, FdustFINE)
+            print('FdustFINE max: '+str(FdustFINE.max()))
+            FdustFINESpec, contribution = wbds.speciate(windBlowDustFolder, FdustFINE, grids, lat, lon, contribution)
         elif EmisD==PMC:
             FdustCOARSE = FdustD
-            FdustCOARSEpec = wbds.speciate(windBlowDustFolder, FdustCOARSE)
+            FdustCOARSEpec, contribution = wbds.speciate(windBlowDustFolder, FdustCOARSE, grids, lat, lon, contribution)
+            print('FdustCOARSE max: '+str(FdustCOARSE.max()))
         else:
             print('You have selected an awkward fraction')
-
+        
         # se existir as parcelas PMFINE e PMC, calcula o PM10
         try:
             FdustPM10 = FdustFINE+FdustCOARSE
-            ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',
-                                          FdustPM10,datesTime[lia],
-                                          mcipMETCRO3Dpath,PM10)
+            ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustPM10,
+                                          datesTime[lia],mcipMETCRO3Dpath,PM10)
         except:
-            print('You do not have the fractions required for PM10')   
+            print('You do not have the fractions required for PM10') 
 
+    # Acumula todas as estimativas de particulas sem especiação        
+    FdustALL = [FdustFINE,FdustCOARSE]
+    FdustALL = np.stack(FdustALL)
+    FdustALL = np.nansum(FdustALL, axis=0)   
+    print('FdustALL max: '+str(FdustALL.max()))
     
-    # Acumula todas as estimativas de particulas sem especiação
-    FdustALL = [FdustFINE,FdustCOARSE,FdustPM10]
-    #FdustALL = [FdustFINE,FdustCOARSE]
-    
-    # empilha em uma array numpy
-    FdustALL = np.stack(FdustALL,axis=0)
+    # soma as emissões de cada especie no PM25 e PMC
+    FdustSpeciated = FdustFINESpec + FdustCOARSEpec
+    print('FdustSpeciated max: '+str(FdustSpeciated.max()))
     
     # cria o netCDF com todas as especies de particulas/frações
     ncCreate.createNETCDFtemporal(outfolder,'windBlowDust_',FdustALL,
                                   datesTime[lia],mcipMETCRO3Dpath,ALL)
     
-    # soma as emissões de cada especie no PM25 e PMC
-    FdustSpeciated = FdustFINESpec + FdustCOARSEpec
-    
     # cria o netCDF especiado
-    ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,
-                                           outfolder,'windBlowDust_',
-                                           FdustSpeciated,
-                                           datesTime[lia],
-                                           mcipMETCRO3Dpath)
+    ncCreate.createNETCDFtemporalSpeciated(windBlowDustFolder,outfolder,
+                                           'windBlowDust_',FdustSpeciated,
+                                           datesTime[lia],mcipMETCRO3Dpath)
     
